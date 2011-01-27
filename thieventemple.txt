@@ -1,0 +1,101 @@
+This file contains the spec_procs for the thieven temple.
+
+kaan_altar is meant to be assigned to the robed priest.  This spec
+requires a new command to be added to the interpreter command list
+called "Kneel".  When you add kneel to the list, set it's function
+to "do_not_here" and that'll be fine.
+
+The thieven_maze proc is assigned to the rooms of the maze that
+link to various "random" spots on the game.
+
+
+SPECIAL(kaan_altar)
+{
+  
+  if (!CMD_IS("kneel")) return FALSE;
+  
+  argument = one_argument(argument, buf);
+  
+  if (!*buf){
+    send_to_char("Kneel where?\r\n", ch);
+    return TRUE;
+  }
+  
+  if (GET_CLASS(ch)!=CLASS_THIEF) {
+    switch (number(1,5)){
+    case 1:
+      send_to_char("A robed priest rushes over and tells you to fuck off.\r\n", ch);
+      act("A robed priest rushes in and tells $n to fuck off.\r\n", FALSE, ch, NULL, NULL, TO_ROOM);
+      break;
+    case 2:
+      send_to_char("A robed priest rushes over and pisses on your feet.\r\n", ch);
+      act("A robed priest rushes in and pisses $n's feet.\r\n", FALSE, ch, NULL, NULL, TO_ROOM);
+      break;
+    case 3:
+      send_to_char("A robed priest rushes over and kicks you in the ass.\r\n", ch);
+      act("A robed priest rushes in and kicks $n in the ass.\r\n", FALSE, ch, NULL, NULL, TO_ROOM);
+      break;
+    case 4:
+      send_to_char("A robed priest rushes over and tells you to go away.\r\n", ch);
+      act("A robed priest rushes in and tells $n to go away.\r\n", FALSE, ch, NULL, NULL, TO_ROOM);
+      break;
+    case 5:
+      send_to_char("A robed priest rushes over, scratches his ass and jams his finger in your ear.\r\n", ch);
+      act("A robed priest rushes in, scratches his ass and jams his finger in $n's ear.\r\n", FALSE, ch, NULL, NULL, TO_ROOM);
+      break;
+    default:
+      send_to_char("Fucking bugs...\r\n", ch);
+      act("Fucking bugs...\r\n", FALSE, ch, NULL, NULL, TO_ROOM);
+      break;
+    }
+    return TRUE;
+  }
+  
+  if(!isname(buf, "altar")){
+    send_to_char("You can't kneel there.\r\n", ch);
+    return TRUE;
+  }
+  
+  send_to_char("As you kneel to pray to Holy Kaan, a robed priest comes \r\n"
+    "over to give you the sacriment.  He tilts the Holy Mug of \r\n"
+    "Beer to your lips, allowing you only one slurp, and places \r\n"
+    "a pretzel on your tongue.\r\n", ch);
+  act("$n kneels to receive the Holy Sacriment.\r\n", FALSE, ch, NULL, NULL, TO_ROOM);
+  
+  /* drink_aff 2 is beer. */
+  gain_condition(ch, DRUNK,
+    (int) ((int) drink_aff[2][DRUNK] * 1) / 4);
+  
+  gain_condition(ch, FULL,
+    (int) ((int) drink_aff[2][FULL] * 1) / 4);
+  
+  gain_condition(ch, THIRST,
+    (int) ((int) drink_aff[2][THIRST] * 1) / 4);
+  
+  return TRUE;
+}
+
+
+SPECIAL(thieven_maze) {
+
+  int from_zone;
+  int to_zone;
+
+  if (!cmd || !IS_MOVE(cmd))
+    return FALSE;
+
+  if (!EXIT(ch, cmd-1) || EXIT(ch, cmd-1)->to_room == NOWHERE)
+    return FALSE;
+
+
+  from_zone = (int)world[IN_ROOM(ch)].number/100;
+  to_zone = (int)world[EXIT(ch, cmd-1)->to_room].number/100;
+
+  if (from_zone != to_zone)
+    send_to_char("/cWYou see a blinding flash of light as you step through "
+                 "the shrubbery.  You have been teleported!/c0\r\n", ch);
+
+  return FALSE; /* So the actually MOVE stuff still happens. */
+
+}
+

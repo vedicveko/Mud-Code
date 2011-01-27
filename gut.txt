@@ -1,0 +1,98 @@
+
+ACMD(do_gut)
+{
+  struct char_data *vict;
+  int percent, prob, healthpercent;
+  struct obj_data *piece;
+
+  one_argument(argument, arg);
+
+  if (!GET_SKILL(ch, SKILL_GUT)) {
+    send_to_char("You don't know how!\r\n", ch);
+    return;
+  }
+
+  if (!(vict = get_char_room_vis(ch, arg))) {
+    if (FIGHTING(ch)) {
+      vict = FIGHTING(ch);
+    } else {
+      send_to_char("Gut who?\r\n", ch);
+      return;
+    }
+  }
+
+  if (!pk_allowed && !pkill_ok(ch, vict)) {
+    send_to_char("You are forbidden to attack players here.\r\n", ch);
+    return;
+  }
+
+  if (vict == ch) {
+    send_to_char("Aren't we funny today...\r\n", ch);
+    return;
+  }
+  if (!GET_EQ(ch, WEAR_WIELD)) {
+    send_to_char("You need to wield a weapon to make it a success.\r\n", ch);
+    return;
+  }
+  if (GET_OBJ_VAL(GET_EQ(ch, WEAR_WIELD), 3) != TYPE_SLASH - TYPE_HIT) {
+    send_to_char("Only slashing weapons can be used for gutting.\r\n", ch);
+    return;
+  }
+  percent = number(1, 101);	/* 101% is a complete failure */
+  prob = GET_SKILL(ch, SKILL_GUT);
+
+  if (GET_MAX_HIT(vict) > 0) 
+    healthpercent = (100 * GET_HIT(vict)) / GET_MAX_HIT(vict);
+  else 
+    healthpercent = -1;	
+ 
+  if (healthpercent >= 10) {
+    send_to_char("They are not hurt enough for you to attempt that.\r\n", ch);
+    hit(vict, ch, TYPE_UNDEFINED);
+    WAIT_STATE(ch, PULSE_VIOLENCE * 4);
+    return;
+  }
+
+  if (percent > prob) {
+    sprintf(buf, "Even in %s's bad state, they manage to avoid your wild slash.\r\n", GET_NAME(vict));
+    send_to_char(buf, ch);
+    send_to_char("You avoid a wild slash at your midsection.\r\n", ch);
+    improve_skill(ch, SKILL_GUT);
+    WAIT_STATE(ch, PULSE_VIOLENCE * 4);
+  } else {
+
+    /* EWWWW */
+    GET_HIT(vict) = -10;
+ 
+    act("You gut $N!", FALSE, ch, 0, vict, TO_CHAR);
+    act("$N guts you!", FALSE, vict, 0, ch, TO_CHAR);
+    act("$n brutally guts $N!", FALSE, ch, 0, vict, TO_NOTVICT);
+
+    act("$N looks down in horror as their intestines spill out!", FALSE, ch, 0, vict, TO_ROOM);
+    act("$N looks down in horror as their intestines spill out!", FALSE, ch, 0, vict, TO_CHAR);
+    act("$N looks down in horror as their intestines spill out!", FALSE, vict, 0, ch, TO_CHAR);
+   hit(vict, ch, TYPE_UNDEFINED);
+
+  piece = create_obj();
+
+  piece->name = "intestine";
+  piece->short_description = "An icky pile of intestines";
+  piece->description = "An icky pile of intestines is here - colon and all.";
+
+  piece->item_number = NOTHING;
+  piece->in_room = NOWHERE;
+  SET_BIT_AR(GET_OBJ_WEAR(piece), ITEM_WEAR_TAKE);
+  GET_OBJ_TYPE(piece) = ITEM_FOOD;
+  GET_OBJ_VAL(piece, 0) = 1;   
+  GET_OBJ_VAL(piece, 3) = 1;   /* watch what you eat. */
+  SET_BIT_AR(GET_OBJ_EXTRA(piece), ITEM_NODONATE);
+  GET_OBJ_WEIGHT(piece) = 1;
+  GET_OBJ_RENT(piece) = 1;
+  obj_to_room(piece, ch->in_room);
+
+    WAIT_STATE(vict, PULSE_VIOLENCE * 4);
+    update_pos(vict);
+  }
+
+}
+

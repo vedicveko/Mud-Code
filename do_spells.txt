@@ -1,0 +1,55 @@
+
+Define two macro constants for the "subcommands" (interpreter.h):
+#define SCMD_SKILLS 0
+#define SCMD_SPELLS 1
+
+Add the following items to the master command list (interpreter.c):
+  { "skills"   , POS_DEAD    , do_spells   , 0, SCMD_SKILLS },
+  { "spells"   , POS_DEAD    , do_spells   , 0, SCMD_SPELLS },
+
+Now add the do_spells implementation to act.informative.c...
+
+ACMD(do_spells)
+{
+  extern char *spells[];
+  extern struct spell_info_type spell_info[];
+  int i;
+  char spsk[6];
+
+  switch (subcmd) {
+  case :
+    strcpy(spsk, "Skill");
+    break;
+  case SCMD_SPELLS:
+    strcpy(spsk, "Spell");
+    break;
+  }
+
+  if (((GET_CLASS(ch) == CLASS_GLADIATOR) ||
+       (GET_CLASS(ch) == CLASS_THIEF)       ) &&
+      (subcmd == SCMD_SPELLS)) {
+    send_to_char("Your class does not know of any spells.\r\n", ch);
+    return;
+  }
+
+  sprintf(buf, "Your class offers the following %ss:\r\n"
+          "Lvl %s\r\n------------------------------------\r\n", spsk, spsk);
+
+  for (i = (subcmd == SCMD_SPELLS ? 1 : MAX_SPELLS); i < (subcmd == SCMD_SPELLS ? MAX_SPELLS : MAX_SKILLS); i++) {
+    if (strlen(buf) >= MAX_STRING_LENGTH - 32) {
+      strcat(buf, "**OVERFLOW**\r\n");
+      break;
+    }
+    if (spell_info[i].min_level[(int) GET_CLASS(ch)] < LVL_IMMORT)
+      sprintf(buf, "%s%3d %s\r\n", buf,
+           spell_info[i].min_level[(int) GET_CLASS(ch)], spells[i]);
+  }
+
+  page_string(ch->desc, buf, 1);
+ 
+}
+
+If you don't have GLADIATOR class or you call it FIGHTER or something)
+then just adjust that chect near the top.  That should plug in really
+cleanly for just about any MUD.
+

@@ -1,0 +1,210 @@
+These are some changes I made in order to "flesh" out the NPC_GIANT class on
+Dibrova.
+
+
+
+/* I put this in fight.c in the perform_violence() function, I suppose you **
+** could also make a spec_proc out of it thought.                          */
+
+    /* NPC Giants are Biotches to fight.... */
+
+    if (IS_NPC(ch) && GET_CLASS(ch) == CLASS_NPC_GIANT) {
+      if (GET_MOB_WAIT(ch) == 0) {
+
+	hit_roll = number (1,100) + GET_STR(ch);
+	to_hit = (100 - (int) (100*GET_LEVEL(ch)/250));
+	if (GET_LEVEL(FIGHTING(ch)) >= LVL_IMMORT)  
+	  hit_roll = 0;
+	
+	switch (number(1, 13) {
+
+	case 1:
+	  if (hit_roll < to_hit) {
+	    GET_POS(ch) = POS_SITTING;
+	    damage(ch, FIGHTING(ch), 0, SKILL_BASH, ABT_SKILL);   
+	  } else {
+	    GET_POS(FIGHTING(ch)) = POS_SITTING;
+	    damage(ch, FIGHTING(ch), GET_LEVEL(ch), SKILL_BASH, ABT_SKILL);
+	    WAIT_STATE(FIGHTING(ch), PULSE_VIOLENCE * 2);
+	  }  
+	  WAIT_STATE(ch, PULSE_VIOLENCE * 3);
+	}
+	break;
+
+      case 2:
+        if (hit_roll < to_hit) {        /* stomp */
+	  damage(ch, FIGHTING(ch), 0, SKILL_STOMP, ABT_SKILL);
+        } else {
+	  damage(ch, FIGHTING(ch), 2 * GET_LEVEL(ch), SKILL_STOMP, ABT_SKILL);
+        }  
+        WAIT_STATE(ch, PULSE_VIOLENCE * 2);
+      
+        break;
+
+      case 3:
+        if (hit_roll < to_hit) {        /* swat */
+	  damage(ch, FIGHTING(ch), 0, SKILL_SWAT, ABT_SKILL);
+        } else {
+	  damage(ch, FIGHTING(ch), 2 * GET_LEVEL(ch), SKILL_SWAT, ABT_SKILL);
+        }  
+        WAIT_STATE(ch, PULSE_VIOLENCE * 2);
+      
+        break;
+      }    
+
+    }
+
+
+/* These are basicly the kick skill with differnt damage messages. **
+** This is from act.offensive.c                                    */
+
+* Stomp
+M
+ 61
+You stomp $N straight into the ground!
+$n stomps you straight into the ground!
+$n stomps $N straight into the ground~
+You try to stomp $N, but miss.
+$n tries to stomp you, but misses.
+$n tries to stomp $N, but misses.
+You stomp on $N's head!
+$n stomps on your head!   /cROUCH!/c0
+$n stomps on $N's head!
+Get real.  You can't hurt $n. $e's a god!
+$N, the fool, tried to hurt you!
+$N, the fool, tried to hurt $n!
+
+ACMD(do_stomp)
+{
+  struct char_data *vict;
+  int percent, prob;
+
+  if (!GET_SKILL(ch, SKILL_STOMP)) {
+    send_to_char("You have no idea how.\r\n", ch);
+    return;
+  }
+
+  one_argument(argument, arg);
+
+  if (!(vict = get_char_room_vis(ch, arg))) {
+    if (FIGHTING(ch)) {
+      vict = FIGHTING(ch);
+    } else {
+      send_to_char("Stomp who?\r\n", ch);
+      return;
+    }
+  }
+  if (vict == ch) {
+    send_to_char("Aren't we funny today...\r\n", ch);
+    return;
+  }
+
+  if (!pk_allowed && !pkill_ok(ch, vict)) {
+    send_to_char("You are forbidden to attack players here.\r\n", ch);
+    return;
+  }
+
+  if (!warn_newbie(ch, vict))
+    return; /* Live to stomp another day. */
+
+  percent = number(1, 101);
+  prob = GET_SKILL(ch, SKILL_STOMP);
+
+  if (percent > prob) {
+    damage(ch, vict, 0, SKILL_STOMP, ABT_SKILL);
+    improve_abil(ch, SKILL_STOMP, ABT_SKILL);
+  } else
+    damage(ch, vict, GET_LEVEL(ch) >> 1, SKILL_STOMP, ABT_SKILL);
+
+  WAIT_STATE(ch, PULSE_VIOLENCE * 3);
+
+}
+
+* Swat
+M
+ 61
+You swat $N with such force you squish $M!
+$n swats you with such force $e squishes you!
+$n swats $N with such force $e squishes $M!
+You try to swat $N, but miss.
+$n tries to swat you, but misses.
+$n tries to swat $N, but misses.
+You swat $N like the puny bug he is.
+$n swats you away like a puny bug.
+$n swats $N away like a puny bug.
+Get real.  You can't hurt $n. $e's a god!
+$N, the fool, tried to hurt you!
+$N, the fool, tried to hurt $n!
+
+ACMD(do_swat)
+{
+  struct char_data *vict;
+  int percent, prob;
+
+  if (!GET_SKILL(ch, SKILL_SWAT)) {
+    send_to_char("You have no idea how.\r\n", ch);
+    return;
+  }
+
+  one_argument(argument, arg);
+
+  if (!(vict = get_char_room_vis(ch, arg))) {
+    if (FIGHTING(ch)) {
+      vict = FIGHTING(ch);
+    } else {
+      send_to_char("Swat who?\r\n", ch);
+      return;
+    }
+  }
+  if (vict == ch) {
+    send_to_char("Aren't we funny today...\r\n", ch);
+    return;
+  }
+
+  if (!pk_allowed && !pkill_ok(ch, vict)) {
+    send_to_char("You are forbidden to attack players here.\r\n", ch);
+    return;
+  }
+
+  if (!warn_newbie(ch, vict))
+    return; /* Live to swat another day. */
+
+  percent = number(1, 101);
+  prob = GET_SKILL(ch, SKILL_SWAT);
+
+  if (percent > prob) {
+    damage(ch, vict, 0, SKILL_SWAT, ABT_SKILL);
+    improve_abil(ch, SKILL_SWAT, ABT_SKILL);
+  } else
+    damage(ch, vict, GET_LEVEL(ch) >> 1, SKILL_SWAT, ABT_SKILL);
+
+  WAIT_STATE(ch, PULSE_VIOLENCE * 3);
+
+}
+
+/* This has nothing to do with Giants but I thought it was cool, I think I **
+** stole this from the wintermute site.                                    */
+
+Change this :
+
+      if (GET_POS(ch) < POS_FIGHTING) {
+      	GET_POS(ch) = POS_FIGHTING;
+      	act("$n scrambles to $s feet!", TRUE, ch, 0, 0, TO_ROOM);
+      }
+    }
+
+To this :
+
+      if ((GET_POS(ch) < POS_FIGHTING)) {
+        if (GET_HIT(ch) > (GET_MAX_HIT(ch) / 2))
+          act("$n quickly stands up.", 1, ch, 0, 0, TO_ROOM);
+        else if (GET_HIT(ch) > (GET_MAX_HIT(ch) / 6))
+          act("$n slowly stands up.", 1, ch, 0, 0, TO_ROOM);
+        else
+          act("$n gets to $s feet very slowly.", 1, ch, 0, 0,TO_ROOM);
+        GET_POS(ch) = POS_FIGHTING;
+      }
+    }
+
+
+

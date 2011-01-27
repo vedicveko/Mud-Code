@@ -1,0 +1,75 @@
+In spec_procs.c at the bottom:
+
+SPECIAL(insect_swarm) {
+   struct char_data *vict = NULL, *tmp_ch = NULL;
+
+   if(cmd || GET_POS(ch) != POS_FIGHTING || !FIGHTING(ch)) {
+      return FALSE;
+   }
+
+   if(!rand_number(0, 5)) {
+      return FALSE;
+   }
+
+   for (vict = world[IN_ROOM(ch)].people; vict; vict = vict->next_in_room) {
+      if(vict == ch) {
+         continue;
+      }
+      if(GET_MOB_VNUM(ch) == GET_MOB_VNUM(vict)) {
+         break;
+      }
+   }
+
+   if(!vict) {
+      return FALSE;
+   }
+
+   if(FIGHTING(vict)) {
+      tmp_ch = FIGHTING(vict);
+   }
+
+   if(!tmp_ch) {
+      return FALSE;
+   }
+
+   act("$n stings so rapidly you do not know what is what!", 1, ch, 0, FIGHTING(ch), TO_NOTVICT);
+
+   if(FIGHTING(vict) == tmp_ch)
+      stop_fighting(vict);
+   if(FIGHTING(tmp_ch))
+     stop_fighting(tmp_ch);
+   if(FIGHTING(ch))
+     stop_fighting(ch);
+   set_fighting(ch, tmp_ch);
+   set_fighting(tmp_ch, ch);
+
+   return TRUE;
+}
+
+In spec_assign.c after SPECIAL(gen_board);
+
+SPECIAL(insect_swarm);
+
+In spec_assign.c after ASSIGNMOB(1, puff);
+
+  ASSIGNMOB(1296, insect_swarm);
+
+Here is a test mobile I created:
+
+#1296
+bee~
+a bee~
+A bee buzzes around your head.
+~
+It looks unfinished.
+~
+adm 0 0 0 0 0 0 0 0 E
+0 20 10 3d5+50 1d1+0
+0 0
+8 8 0
+E
+
+-- Dean Vaughan
+   August 04, 2003
+   http://thevedic.net/mud
+   vedic@thevedic.net

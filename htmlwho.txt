@@ -1,0 +1,102 @@
+Whoever puts this in...
+
+This func relies on a few small things from Dibrova and will not 
+run in a virgin CircleMUD.
+
+I moved "int port" out of "main()" and made it global.  That way, I
+am able to disable certain stuff depending on what port (prod or 
+build) the game is running on.  Just take the reference to "port" 
+out if you don't want this.  It won't really hurt anything, but if
+you run more than one copy of your MUD, you may have them overwriting 
+each others files.
+
+Also, Dibrova has a few other additions that affect this function.
+We use "God Types" to translate god levels into words (i.e. "Builder".)
+We also use races so that adds another macro this function uses that 
+your MUD may not.
+
+Beside that, just change the HTML stuff to make the page look like you
+want it to.  We have it to match the rest of our web site.
+
+The following function can go anywhere, really.  I put it in
+act.informative.c.
+
+void make_who2html(void) {
+
+   extern struct descriptor_data *descriptor_list;
+   extern char *class_abbrevs[];
+   FILE *opf;
+   struct descriptor_data *d;
+   struct char_data *ch;
+   char mvcmd[256];
+   int ct=0;
+
+   if ((opf = fopen("who.tmp", "w")) == 0) {
+     perror("Failed to open who.tmp for writing.");
+     return;
+   }
+
+   fprintf(opf, "<HTML>\n<HEAD>\n<TITLE>Who's on?</TITLE>\n"
+                "<META HTTP-EQUIV=Refresh CONTENT=30;"
+                "URL=who%d.html>\n", port);
+
+   fprintf(opf, "</HEAD>\n<BODY background=img/dk18.jpg>"
+                "<H1><font color=#C0C0C0>Who's playing?</font></H1>\n"
+                "<HR><font color=#C0C0C0>\n");
+
+   for (d = descriptor_list; d; d = d->next)
+     if (!d->connected) { /* playing.  This will hide the writers. :( */
+
+       if (d->original)
+         ch = d->original;
+       else if (!(ch = d->character))
+         continue;
+
+       if (GET_INVIS_LEV(ch))
+         continue;
+
+       ct++;
+
+       if (GET_LEVEL(ch) < LVL_IMMORT)
+         sprintf(buf, "<font color=ffff00>[</font>"
+                      "<font color=ff0000>%d</font>"
+                      "<font color=0000ff> %s</font>"
+                      "<font color=00ff00> %s</font>"
+                      "<font color=ffff00>]</font>"
+                      "<font color=c0c0c0> %s %s</font><BR>\n", GET_LEVEL(ch),
+                      RACE_ABBR(ch), CLASS_ABBR(ch),
+                      GET_NAME(ch), GET_TITLE(ch));
+       else {
+         sprintbit(GET_GOD_TYPE(ch), god_types, buf1);
+         sprintf(buf, "<font color=c0c0c0>%s %s - %s %s</font><BR>\n",
+                      god_lvls[GET_LEVEL(ch) - LVL_IMMORT], buf1,
+                      GET_NAME(ch), GET_TITLE(ch)); 
+       }
+       proc_color(buf, 0);
+       fprintf(opf, buf);
+     } 
+     if (!ct)
+       fprintf(opf,"Nobody!<BR>\n");
+
+   fprintf(opf, "</font>\n<HR>\n</BODY>\n</HTML>\n");
+   fclose(opf);
+   sprintf(mvcmd, "mv who.tmp ~/public_html/who%d.html &", port);
+   system(mvcmd);
+}
+
+
+Next, in "comm.c", you need to put in a call or two for the the 
+above function so first prototype it at the top:
+  void make_who2html(void);
+
+I call it once after the last player leaves. Right after the line:
+    log("No connections.  Going to sleep.");
+    make_who2html(); /* ADD THIS */
+ 
+Then, I call it from the heartbeat function.  Simply tuck it in 
+there just like the others:
+  if (!(pulse % (30 * PASSES_PER_SEC)))
+    make_who2html();
+This updates the page every 30 seconds.  Change the update interval 
+to suit you.  That's it.
+

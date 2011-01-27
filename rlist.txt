@@ -1,0 +1,78 @@
+Here's my implementation of RLIST.  It's pretty raw and could 
+be optomized for speed.  A good place to start would be to jump
+out of loops when we see a break in a patterns (like we've moved
+past the current zones rooms, etc) but I'll leave that to you.
+There are only three steps to add this function to your MUD.  As
+far as I can see (I haven't spent any time checking) it is not 
+dependent on any other stuff except for the definition of 
+LVL_BUILDER.  If you don't have that, just put in whatever god
+level you want.
+
+First, add the following segment to the end of olc.c
+
+extern struct zone_data *zone_table;
+extern int real_zone(int number);
+extern int top_of_world;
+ACMD(do_rlist)
+{
+
+  int i;
+  int zone_num;
+  int room_num;
+  int room_count=0;
+  sh_int curr_room;
+  char tmp[128];
+
+  tmp[0]='\0';
+
+  one_argument(argument, arg);
+  if (!*arg) {
+    send_to_char("Specify a zone number.\r\n", ch);
+    return;
+  }
+
+  zone_num = atoi(arg);
+
+  for (i = 0; i <= top_of_zone_table; i++)
+    if (zone_table[i].number == zone_num)
+
+      if (i >= 0 && i <= top_of_zone_table) {
+        sprintf(buf, "\r\nRoom list for zone # %d: %s.\r\n\r\n"
+         "Room #  Name\r\n"
+	 "---------------------------------------------------------------\r\n",
+	 zone_table[i].number, zone_table[i].name);
+        send_to_char(buf, ch);
+        *buf='\0';
+        for (curr_room = 0; curr_room <= top_of_world; curr_room++){
+          room_num = world[curr_room].number;
+          if (room_num >= (zone_num*100) && room_num <= zone_table[i].top){
+            if (real_room(room_num) > NOWHERE){
+              sprintf(tmp, " %-5d %s\r\n", room_num, world[curr_room].name);
+              strcat(buf, tmp);
+              room_count++;
+            }
+          }
+        }
+      sprintf(tmp,
+       "---------------------------------------------------------------\r\n"
+       "%d rooms listed for zone %d\r\n", room_count, zone_num);
+      strcat(buf, tmp);
+      page_string(ch->desc, buf, TRUE);
+    } else
+      send_to_char("Zone not found.\r\n", ch);
+
+  if (!room_count)
+    send_to_char("Zone not found.\r\n", ch);
+
+}
+
+Next, add the following prototype near the other function
+prototypes in interpreter.c.
+
+ACMD(do_rlist);
+
+Finally, add the entry to the command list.
+
+
+  { "rlist"    , POS_DEAD    , do_rlist    , LVL_BUILDER, 0 },
+

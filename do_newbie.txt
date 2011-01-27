@@ -1,0 +1,44 @@
+/*
+# By Vedic <vedic@thevedic.net>
+# From Aarait telnet://thevedic.net:4000 http://thevedic.net/~aarait
+# Share and share alike.
+*/
+
+
+void do_newbie(struct char_data *vict)
+{
+  struct obj_data *obj;
+  int i, w;
+ 
+  // This is a list of virtual nums for eq, must end with -1.
+  int newbie_eq[] = {1, 2, 3, 4, 5, 9, -1};
+
+  /*  Give some basic eq to this person (vict) */
+
+  for (i = 0; newbie_eq[i] != -1; i++) {
+    obj = read_object(newbie_eq[i], VIRTUAL);
+    obj_to_char(obj, vict);
+  }
+
+  // Give them some money
+  GET_GOLD(ch) += number(10, 20);
+
+
+  / Equip their eq.
+  for (w = 0; w < NUM_WEARS; w++) {
+    if(!GET_EQ(vict, w)) {
+      for (obj = vict->carrying; obj; obj = obj-> next_content) {
+        if (GET_OBJ_TYPE(obj) == ITEM_ARMOR || GET_OBJ_TYPE(obj) == ITEM_WORN) {
+          if(find_eq_pos(vict, obj, 0) == w) {
+            obj_from_char(obj);
+
+            equip_char(vict, obj, w);
+          }
+        }
+      }
+    }
+  }
+}
+
+
+

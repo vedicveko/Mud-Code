@@ -1,0 +1,97 @@
+This "snippet" is not going to really be specific to anything.  Rather,
+it will just describe an idea I've implemented on Dibrova and tell you
+how to implement a similar thing.  My reasoning for doing it this way
+is simply because this idea is based on several other changes.  Please
+only expect this to explain my idea and point you in the right
+direction.  As always, add your own ideas - use your imagination - and
+I think this would be a pretty cool addition to most MUD's...
+
+Here's the basics.  I call it "Sector Affects" but that name doesn't
+really seem like a good description now.  Basically, it adds some
+behavior to rooms having a certain sector type by polling all players
+during the heartbeat pulse and behaving based on certain conditions.
+For example, on Dibrova, we have sector types for UNDERWATER which a
+player can be in only if affected by a BREATHE spell (potion, cast or
+object affect).  If the spell wears off, the player should drown,
+right?  I think so too. ;-)  So what happens is, during the heartbeat,
+a function is called to check each player and do something (or nothing)
+based on where he or she is.
+
+On Dibrova, Sector Affects are used, among other things, to:
+
+  Drain energy from a player if in the desert during the
+  daytime due to fatigue.  The player will also become
+  thirsty sooner.
+
+  If underwater without the BREATHE affection, the player
+  will lose a shit-pile of heatlh due to DROWNING!
+
+  If in a cold room (snow, ice) the player will lose some
+  energy as the cold bites at his skin.
+
+  If an object is on the "ground" in the water, it will
+  sink.  If in the air, it will fall.
+
+These are just a few possibilities.  I bet you can think of lots
+more.
+
+Now for some code.  The beauty of this, really, is its simplicity.
+All I've done is created a single function and a simple call to 
+it from the heartbeat function.  A simplified version of the
+function is listed below.
+
+void sector_affects() {
+
+  struct descriptor_data *d;
+  int i, dir, was_in;
+
+  for (d = descriptor_list; d; d = d->next) {
+    if (d->connected) continue;
+    switch(SECT(d->character->in_room)) {
+    case SECT_DESERT:
+      send_to_char("The intense heat of the desert drains you.\r\n",
+                   d->character);
+      if (GET_HIT(d->character) > 3) GET_HIT(d->character)-=2;
+      break;
+    case SECT_OCEAN:
+      if (PRF_FLAGGED(d->character, PRF_NOHASSLE) ||
+          AFF_FLAGGED(d->character, AFF_FLY)) break;
+      for (i=0; i < 4; i++) { 
+        dir = number(0, NUM_OF_DIRS-1);
+        if (CAN_GO(d->character, dir)) {
+          act("$n is tossed by the waves.", FALSE, d->character, 0, 0, TO_ROOM);
+          send_to_char("You are tossed violently by the salty waves.\r\n",
+                       d->character);
+          was_in = d->character->in_room;
+          char_from_room(d->character); 
+          char_to_room(d->character, world[was_in].dir_option[dir]->to_room);
+          look_at_room(d->character, 0);
+          return;
+        }
+      }
+      break;
+    } /* switch */
+  } /* for... */
+}
+
+This shows the affects for two sectors types.  To have stuff happen
+to objects, just add another top-level "for" loop to iterate through
+object_list.  Piece of cake.
+
+The call, which I put right after mobile_activity, is:
+
+  if (!(pulse % (45 * PASSES_PER_SEC)))		/* 45 seconds */
+    sector_affects();
+
+Set the time to suit your taste.  Since this is a fixed pulse, 
+be sure to add some aspect of "randomness" in the function
+itself where applicable.
+
+I've written about a gazillion little features and commands for
+CircleMUD and I have to say - this is the sort of thing I like best.
+These, to me, seem to be the ones that add a lot of personality and
+realism to a game.  The example I included are really sort of bad
+examples because those particular ones don't have any "chance"
+involved.  I suggest adding in some other tests for random numbers
+(LUCK) or testing DEXterity for the waves or CONstitution for the 
+affects of heat.  Things like that.

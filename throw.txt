@@ -1,0 +1,121 @@
+
+ACMD(do_throw)
+{ 
+
+  struct char_data *vict;
+  struct obj_data *obj;
+  int percent, prob;
+  int damage_val;
+  two_arguments(argument, buf, buf2);
+
+
+  if (!GET_SKILL(ch, SKILL_THROW)) {
+    send_to_char("You don't know how!\r\n", ch);
+    return;
+  }
+
+  if (!(vict = get_char_room_vis(ch, buf2))) {
+    if (FIGHTING(ch)) {
+      vict = FIGHTING(ch);
+    } else {
+      send_to_char("Throw what at who?\r\n", ch);
+      return;
+    }
+  }
+
+  if (!pk_allowed && !pkill_ok(ch, vict)) {
+    send_to_char("You are forbidden to attack players here.\r\n", ch);
+    return;
+  }
+
+ if (!(obj = get_obj_in_list_vis(ch, buf, ch->carrying))) {
+    send_to_char("Throw what at who?\r\n", ch);
+    return;
+  }
+  
+  if (vict == ch) {
+    send_to_char("That would be funny to see.\r\n", ch);
+    return;
+  }
+
+  percent = number(1, 101);	/* 101% is a complete failure */
+  prob = GET_SKILL(ch, SKILL_THROW);
+
+  damage_val = GET_STR(ch) / 2 + GET_OBJ_WEIGHT(obj)  + GET_LEVEL(ch);
+
+  if (percent > prob) {
+    /* miss like a mother fucker. */
+      damage(ch, vict, 0, SKILL_THROW);
+        /* victim */
+      act("$N throws $p at you and misses by a long shot.", FALSE, vict, obj, ch, TO_CHAR);
+        /* ch */
+      act("You throw $p at $n but, miss by a long shot.", FALSE, vict, obj, ch, TO_VICT);
+        /* everyone else */
+      act("$N throws $p at $n but, misses by a long shot.", FALSE, vict, obj, ch, TO_NOTVICT);
+      return;
+  }
+
+  else {
+      if (GET_OBJ_TYPE(obj) == ITEM_SCROLL || (GET_OBJ_TYPE(obj) == ITEM_NOTE)) {
+        /* victim */
+        act("$N hits you upside the head with $p and exclaims, Bad Doggie!", FALSE, vict, obj, ch, TO_CHAR);
+        /* ch */
+        act("You hit $n in the head with $p and exclaim, Bad Doggie!", FALSE, vict, obj, ch, TO_VICT);
+        /* everyone else */
+        act("$N hits $n in the head with $p and exclaims, Bad Doggie!", FALSE, vict, obj, ch, TO_NOTVICT);
+        extract_obj(obj);
+
+      }
+
+      else if (GET_OBJ_TYPE(obj) == ITEM_WEAPON) {
+       /* victim */
+        act("$N throws $p at you and cuts your chest.", FALSE, vict, obj, ch, TO_CHAR);
+        /* ch */
+        act("You throw $p at $n and cut $m chest.", FALSE, vict, obj, ch, TO_VICT);
+        /* everyone else */
+        act("$N throws $p at $n and cuts $m chest.", FALSE, vict, obj, ch, TO_NOTVICT);
+        extract_obj(obj);
+      }
+
+      else if (GET_OBJ_TYPE(obj) == ITEM_POTION) {
+
+         /* victim */
+        act("$N throws $p at you and it goes right down your throat!", FALSE, vict, obj, ch, TO_CHAR);
+        /* ch */
+        act("You throw $p at $n and it goes right down $m throat!", FALSE, vict, obj, ch, TO_VICT);
+        /* everyone else */
+        act("$N throws $p at $n and it goes right down $m throat!", FALSE, vict, obj, ch, TO_NOTVICT);
+        
+        if (chance(50)) {
+
+           mag_objectmagic(vict, obj, buf);
+	}	
+	else {
+
+        /* victim */
+        act("You gag and spit out $p.", FALSE, vict, obj, ch, TO_CHAR);
+        /* ch */
+        act("$n gags and spits out $p.", FALSE, vict, obj, ch, TO_VICT);
+        /* everyone else */
+        act("$n gags and spits out $p.", FALSE, vict, obj, ch, TO_NOTVICT);
+	  
+	}
+      }
+
+      else {
+        act("$N throws $p and hits you square in the chest.", FALSE, vict, obj, ch, TO_CHAR);
+        /* ch */
+        act("You throw $p at $n and hit $m in the chest.", FALSE, vict, obj, ch, TO_VICT);
+        /* everyone else */
+        act("$N throws $p at $n and hits $m in the chest.", FALSE, vict, obj, ch, TO_NOTVICT);
+       extract_obj(obj);
+      }
+
+  }
+
+  damage(ch, vict, damage_val, SKILL_THROW);
+  WAIT_STATE(ch, PULSE_VIOLENCE * 3);
+  /* all done */
+
+}
+

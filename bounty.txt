@@ -1,0 +1,119 @@
+In Dibrova, we allow for a limited pkill based on many things (clan,
+level, etc). Another factor is the 'bounty' flag. If a player has
+a bounty on their head, they may be attacked by anyone who wishes
+to give it a shot. The charge in the current setup is 550,000 gold
+to set the bounty on a player, 500,000 of which goes to the player
+who gets the kill.
+
+The code below is that which enables the bounty option.
+
+Anyone who might need any help with this, feel free to visit me
+at 63.81.118.7 port 5150 (Dibrova). If I'm not on, send me a
+mudmail.
+
+- Kaan
+
+
+
+First, in structs.h, add the player flag:
+
+#define PLR_BOUNTY      16  /* Player has a bounty on life      */
+
+
+In act.informative.c, look for:
+
+          if (PLR_FLAGGED(tch, PLR_KILLER))
+            strcat(buf, " (KILLER)");
+
+/* add these two lines */
+          if (PLR_FLAGGED(tch, PLR_BOUNTY))
+            strcat(buf, " /cR(/crBounty/cR)/c0 ");
+
+          if (PRF_FLAGGED(tch, PRF_AFK))
+             strcat(buf, " /cR(AFK)/c0"); 
+
+In fight.c, in void damage, after the victim dies (look for 'Uh oh, victim
+died) add this:
+
+       if (PLR_FLAGGED(victim, PLR_BOUNTY)) {
+         REMOVE_BIT_AR(PLR_FLAGS(victim), PLR_BOUNTY);
+         GET_GOLD(ch) = GET_GOLD(ch) + 500000;
+         sprintf(buf, "\r\n/cRBOUNTY:: The bounty on %s has been collected "
+                      "by %s!/c0\r\n", GET_NAME(victim), GET_NAME(ch));
+         send_to_all(buf);
+       }
+
+In interpreter.c, add:
+
+  { "bounty"   , POS_STANDING, do_not_here , 0, 0 },
+
+
+In utils.c, in the pkill_ok function, after the PLR_KILLER check, add:
+
+ if(PLR_FLAGGED(victim, PLR_BOUNTY)) 
+   return TRUE;
+
+
+In spec_procs, add the spec for the bounty shop:
+
+SPECIAL(bounty)
+{
+  struct char_data *victim;
+  struct descriptor_data *i;
+
+  if (CMD_IS("bounty")) {
+
+    one_argument(argument, arg);
+
+    if (!*arg) {
+      send_to_char("Who is it that you wish to place a bounty on?\r\n", ch);
+      return TRUE;
+    }
+    for (i = descriptor_list; i; i = i->next) {
+      if (!i->connected && i->character && i->character != ch) {
+        victim = i->character;
+        if (!(victim = get_char_vis(ch, arg))) {
+          send_to_char(NOPERSON, ch);
+          return TRUE;
+        }
+        if (victim == ch) {
+          send_to_char("You want to place a bounty on yourself? Nah.\r\n", ch);
+          return TRUE;
+        }
+        if (GET_LEVEL(victim) >= LVL_IMMORT) {
+          send_to_char("Let's just call that person 'priviledged', okay?\r\n", c
+h);
+          return TRUE;
+        }
+        if (GET_LEVEL(victim) < 100 && GET_CLASS(victim) < 9) {
+          send_to_char("You can't place bounties on players under level "
+                       "100 unless they are remorts.\r\n", ch);
+          return TRUE;
+        }
+        if (GET_GOLD(ch) < 550000) {
+          send_to_char("You do not have the funds to place a bounty upon them.\r
+\n"
+                       "The cost to place a bounty is 550,000 gold.\r\n", ch);
+          return TRUE;
+        }
+        if (PLR_FLAGGED(victim, PLR_BOUNTY)) {
+          send_to_char("That person already has a bounty on them.\r\n", ch);
+          return TRUE;
+        } else
+          SET_BIT_AR(PLR_FLAGS(victim), PLR_BOUNTY);
+          GET_GOLD(ch) = GET_GOLD(ch) - 550000;
+          send_to_char("You pay the 550,000 gold to place the bounty.\r\n", ch);
+          send_to_char("A bounty has been placed upon your head - watch your "
+                       "back!\r\n", victim);
+          sprintf (buf, "\r\n/cRBOUNTY:: A bounty has been placed upon %s's "
+                        "life!/c0\r\n", GET_NAME(victim));
+          send_to_all(buf);
+          return TRUE;
+       }
+     }
+   }
+   return FALSE;
+}
+
+
+And that should be it. ;-)

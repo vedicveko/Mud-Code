@@ -1,0 +1,44 @@
+Here's my implementation of the OMNI command.  I say that like I'm 
+totally comfortable with it.   The fact is, I never heard of it until
+recently when an immortal on my MUD mentioned it.  It doesn't make
+much difference to have this command, really.  I use it to just get a 
+quick idea what and how everyone is doing.  This will sometimes 
+lead me to use another custom command I have called FLUX.
+
+Anyway, it basically lists all the mortals and tells you how healthy
+they are, where they are, what position they are in (fighting, resting,
+etc.) and a few other unimportant things.
+
+To plug this in your CircleMUD, just plop the following function in
+act.wazard.c...
+
+ACMD(do_omni) {
+
+  struct char_data *tch;
+  char tmp[256];
+  int count = 0;
+
+  send_to_char("Lvl  Class  Room   Name                "
+               "Health  Position\r\n", ch);
+  for (tch = character_list; tch; tch = tch->next)
+    if (!IS_NPC(tch) && GET_LEVEL(tch) < LVL_IMMORT) {
+      sprintf(tmp, "%2d  %4s    %-5d  %-20s  %3d%%  %s\r\n",
+              GET_LEVEL(tch), CLASS_ABBR(tch), world[IN_ROOM(tch)].number,
+              GET_NAME(tch), (int)(GET_HIT(tch)*100)/GET_MAX_HIT(tch),
+              position_types[(int)GET_POS(tch)]);
+      send_to_char(tmp, ch);
+      count++;
+    }
+  if (!count)
+    send_to_char("  No mortals are on!\r\n", ch);
+
+}
+
+...and then add the declaration and command to interpreter.c, like:
+
+ACMD(do_omni);
+
+...and...
+
+  { "omni"     , POS_DEAD    , do_omni     , LVL_ADMIN, 0},
+

@@ -1,0 +1,66 @@
+SPECIAL(class_cleric)
+{
+  struct char_data *vict;
+
+  if (cmd || GET_POS(ch) != POS_FIGHTING)
+    return FALSE;
+
+  /* pseudo-randomly choose someone in the room who is fighting me */
+  for (vict = world[ch->in_room].people; vict; vict = vict->next_in_room)
+    if (FIGHTING(vict) == ch && !number(0, 4))
+      break;
+
+  /* if I didn't pick any of those, then just slam the guy I'm fighting */
+  if (vict == NULL)
+    vict = FIGHTING(ch);
+
+     if(number(0, GET_LEVEL(ch)) > (GET_LEVEL(ch) / 2))
+       return FALSE;
+
+  if ((GET_LEVEL(ch) > 17) && (number(0, 10) == 0))
+    cast_spell(ch, vict, NULL, SPELL_HARM, ABT_SPELL);
+
+  if ((GET_LEVEL(ch) > 25) && (number(0, 8) == 0))
+    if (IS_EVIL(ch))
+	cast_spell(ch, vict, NULL, SPELL_CURSE, ABT_SPELL);
+    else
+	cast_spell(ch, vict, NULL, SPELL_CALL_LIGHTNING, ABT_SPELL);
+
+  if ((GET_LEVEL(ch) > 23) && (number(0, 8) == 0))
+    cast_spell(ch, vict, NULL, SPELL_EARTHQUAKE, ABT_SPELL);
+
+  if ((GET_LEVEL(ch) > 12) && (number(0, 12) == 0)) {
+    if (IS_EVIL(ch))
+      cast_spell(ch, vict, NULL, SPELL_DISPEL_GOOD, ABT_SPELL);
+    else if (IS_GOOD(ch))
+      cast_spell(ch, vict, NULL, SPELL_DISPEL_EVIL, ABT_SPELL);
+  }
+  if (number(0, 4))
+    return TRUE;
+
+  switch(number((GET_LEVEL(ch)>>1) , GET_LEVEL(ch))) {
+  case 1: case 2: case 3: case 4: case 5:
+    cast_spell(ch, ch, NULL, SPELL_CURE_LIGHT, ABT_SPELL);
+    break;
+  case 6: case 7:
+    cast_spell(ch, ch, NULL, SPELL_CURE_LIGHT, ABT_SPELL);
+    break;
+  case 8: case 9:
+    cast_spell(ch, ch, NULL, SPELL_CURE_CRITIC, ABT_SPELL);
+    break;
+  case 10: case 11:
+    cast_spell(ch, vict, NULL, SPELL_DUMBNESS, ABT_SPELL);
+    break;
+  case 12: case 13: case 14: case 15: case 16: case 17: case 23:
+    cast_spell(ch, vict, NULL, SPELL_CURE_LIGHT, ABT_SPELL);
+    break;
+  case 27:
+    cast_spell(ch, vict, NULL, SPELL_CALL_LIGHTNING, ABT_SPELL);
+    break;
+  default:
+    cast_spell(ch, ch, NULL, SPELL_CURE_CRITIC, ABT_SPELL);
+    break;
+  }
+  return TRUE;
+
+}

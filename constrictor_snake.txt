@@ -1,0 +1,47 @@
+In spec_procs.c at the bottom:
+
+SPECIAL(constrictor_snake)
+{
+
+   if (cmd || GET_POS(ch) != POS_FIGHTING || !FIGHTING(ch))
+      return (FALSE);
+
+   if (IN_ROOM(FIGHTING(ch)) != IN_ROOM(ch) || rand_number(0, GET_LEVEL(ch)) != 0)
+      return (FALSE);
+
+   act("$n wraps $mself around $N's neck and begins squeezing!", 1, ch, 0, FIGHTING(ch), TO_NOTVICT);
+   act("$n wraps $mself around your neck and begins squeezing!", 1, ch, 0, FIGHTING(ch), TO_VICT);
+   call_magic(ch, FIGHTING(ch), 0, SPELL_SLEEP, GET_LEVEL(ch), CAST_SPELL);
+   stop_fighting(FIGHTING(ch));
+   stop_fighting(ch);
+   GET_POS(ch) = POS_SLEEPING;
+   return (TRUE);
+}
+
+In spec_assign.c after SPECIAL(gen_board);
+
+SPECIAL(constrictor_snake);
+
+In spec_assign.c after ASSIGNMOB(1, puff);
+
+  ASSIGNMOB(1298, constrictor_snake);
+
+
+Here is a test mobile I created:
+#1298
+snake constrictor~
+a constrictor snake~
+A constrictor snake slithers about.
+~
+.
+~
+ad 0 0 0 0 0 0 0 0 E
+0 20 10 1d1+50 1d1+0
+0 0
+8 8 0
+E
+
+-- Dean Vaughan
+   August 04, 2003
+   http://thevedic.net/mud
+   vedic@thevedic.net

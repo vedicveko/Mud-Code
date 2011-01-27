@@ -1,0 +1,84 @@
+Are you tired of your players brandishing weapons in town? Does it cause bar fights to get out
+of hand? It is time you did something about it! Follow the instructions below and you'll never
+have to worry about it again. Your oh so friendly city guard corp will warn a player
+to unwield their weapon, if they don't the fun begins!
+
+
+Open structs.h and search for:
+/* Special playing constants shared by PCs and NPCs which aren't in pfile */
+struct char_special_data {
+
+At the end of the structure, before the '};', add this:
+
+bool weapwarned;             // PLayer has been warned about their weap. 
+
+Close structs.h and open spec_procs.c.
+
+Replace your SPECIAL(cityguard) function with these two.
+
+void mobsay(struct char_data *ch, const char *msg)
+{
+  char Gbuf[MAX_INPUT_LENGTH];
+
+  if (!msg || !*msg) {
+    log("SYSERR: No text in mobsay()");
+    return;
+  }
+  if (strlen(msg) > (MAX_INPUT_LENGTH - 1)) {
+    log("SYSERR: text too long in mobsay()");
+    return;
+  }
+  strcpy(Gbuf, msg);
+  do_say(ch, Gbuf, 0, 0);
+}
+
+SPECIAL(cityguard)
+{
+  struct char_data *tch;
+
+  if (cmd || !AWAKE(ch) || FIGHTING(ch))
+    return (FALSE);
+
+  for (tch = world[ch->in_room].people; tch; tch = tch->next_in_room) {
+    if(IS_NPC(tch) || !CAN_SEE(ch, tch) || GET_LEVEL(tch) > LVL_GOD) { continue; }
+    if (PLR_FLAGGED(tch, PLR_KILLER)) {
+      act("$n screams 'HEY!!!  You're one of those PLAYER KILLERS!!!!!!'", FALSE, ch, 0, 0, TO_ROOM);
+      hit(ch, tch, TYPE_UNDEFINED);
+      return (TRUE);
+    }
+
+    if (PLR_FLAGGED(tch, PLR_THIEF)){
+      act("$n screams 'HEY!!!  You're one of those PLAYER THIEVES!!!!!!'", FALSE, ch, 0, 0, TO_ROOM);
+      hit(ch, tch, TYPE_UNDEFINED);
+      return (TRUE);
+    }
+    if(GET_EQ(tch, WEAR_WIELD) && !tch->char_specials.weapwarned && GET_OBJ_TYPE(GET_EQ(tch, WEAR_WIELD)) != ITEM_POLE) {
+      sprintf(buf, "Remove your weapon, %s. I will not warn you again.", GET_NAME(tch));
+      mobsay(ch, buf);
+      tch->char_specials.weapwarned = 1;
+      return (TRUE);
+    }
+    if(GET_EQ(tch, WEAR_WIELD) && tch->char_specials.weapwarned && GET_OBJ_TYPE(GET_EQ(tch, WEAR_WIELD)) != ITEM_POLE) {
+      obj_to_char(unequip_char(tch, WEAR_WIELD), tch);
+      tch->char_specials.weapwarned = 0;
+      act("$n hits you over the head with the butt of $s weapon, knocking you to the ground.", FALSE, ch, 0, tch, TO_VICT); 
+      act("$n hits $N over the head with the butt of $s weapon, knocking $N to the ground.", FALSE, ch, 0, tch, TO_NOTVICT);
+      act("$n deflty disarms you.", FALSE, ch, 0, tch, TO_VICT);
+      act("$n deftly disarms $N.", FALSE, ch, 0, tch, TO_NOTVICT);
+      GET_POS(tch) = POS_SITTING;
+      if(GET_HIT(tch) > 0) {
+        GET_HIT(tch) = GET_HIT(tch) - number(1, 3);
+        update_pos(tch);
+      }
+      return (TRUE);
+    }
+  }
+  return (FALSE);
+}
+
+Great! Now close the file, and compile your mud!
+
+-- Dean Vaughan (Vedic)
+   November 7, 2002
+   http://thevedic.net/mud
+   vedic@thevedic.net

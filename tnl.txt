@@ -1,0 +1,31 @@
+TNL - a handy little command that simply reports how much experience
+you need to gain another level.  See, on Dibrova, we make players go
+to a guild and GAIN.  When you have enough experience (a negative 
+amount to the next level) you stop gaining experience, so it's a good
+thing to high-tail it back to a town and GAIN.  Anyway, just add do_tnl 
+to act.informative.c and then a new line to the command list for "tnl",
+recompile and rock on.  Like a hurricane, I mean.
+
+
+ACMD(do_tnl)
+{
+
+  char tmp[256];
+
+  if (GET_LEVEL(ch) >= LVL_IMMORT) {
+    send_to_char("You are all leveled out!\r\n", ch);
+    return;
+  }
+
+  if ((level_exp(GET_CLASS(ch), GET_LEVEL(ch) + 1) - GET_EXP(ch)) < 1 ) {
+    act("$n is ready to gain another level!", FALSE, ch, 0, 0, TO_ROOM);
+    act("You are ready to gain another level!", FALSE, ch, 0, 0, TO_CHAR);
+  } else {
+    sprintf(tmp, "$n needs %d to gain another level.", level_exp(GET_CLASS(ch),
+               GET_LEVEL(ch) + 1) - GET_EXP(ch));
+    act(tmp, FALSE, ch, 0, 0, TO_ROOM);
+    sprintf(tmp, "You need %d to gain another level.", level_exp(GET_CLASS(ch),
+               GET_LEVEL(ch) + 1) - GET_EXP(ch));
+    act(tmp, FALSE, ch, 0, 0, TO_CHAR);
+  }
+}

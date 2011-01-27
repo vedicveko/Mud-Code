@@ -1,0 +1,39 @@
+spello(SPELL_DEATH, 100, 40, 4, POS_FIGHTING, TAR_CHAR_ROOM, TRUE, MAG_MANUAL);
+
+ASPELL(spell_death)
+{
+  struct char_data *target = (struct char_data *) victim;
+
+
+  int percent;
+
+  if (GET_MOVE(ch) <= 50) {
+     send_to_char("You are to tired.\r\n", ch);
+  }
+
+  if (GET_MAX_HIT(target) > 0) 
+    percent = (100 * GET_HIT(target)) / GET_MAX_HIT(target);
+  else 
+    percent = -1;	
+
+  send_to_char("You summon Death himself to assist you!\r\n", ch);
+  act("$n summons Death to assist $M.", FALSE, ch, 0, target, TO_ROOM);
+
+  if (percent <= 20) {
+     sprintf(buf, "Death slays %s for you!\r\n", GET_NAME(target));
+     send_to_char(buf, ch);
+     sprintf(buf, "Death reaches out and touches you with his index finger and you die.\r\n");
+     send_to_char(buf, target);
+     GET_MOVE(ch) = 1;
+     GET_HIT(target) = -30;
+     update_pos(target);
+
+	     }
+     else {
+       sprintf(buf, "Death seems to be uninterested in %s\r\n", GET_NAME(target));
+       send_to_char(buf, ch);
+       send_to_char("Death seems to be uninterested in you.\r\n", target);
+       hit(victim, ch, TYPE_UNDEFINED);
+     }
+
+}

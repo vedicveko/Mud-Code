@@ -1,0 +1,236 @@
+/*
+# Started 21022000 by Vedic <vedic@thevedic.net>
+# From Dibrova telnet://thevedic.net:5150 http://thevedic.net/~dibrova
+# Share and share alike.
+*/
+// mobaction() and mobsay() are borrowed from greymud
+
+#define BOTTLE 25009 
+#define FAIRY 25009
+#define BOTTOM 25000
+#define TOP 25099
+
+/* The mob you define above as fairy gets SPECIAL(fairy_follower) assigned to it. The mob you want to the player to catch
+gets SPECIAL(fairy_catch), ACMD(do_fairyfollower) is the fairyfollower skill and the reward for this quest. The mob that
+you want to give out the quest gets SPECIAL(fairy_hermit). The obj the player brings back to the hermit is the one defined
+as BOTTLE. BOTTOM should be the lowest room in the zone, TOP should be the highest. Dibrova's skill code is rather unique so the fairy_follower spec will need some changes. */
+
+void mobaction(struct char_data *ch, char *string, char *action)
+{
+  sprintf(buf, "%s %s", action, string);
+  command_interpreter(ch, buf);
+}
+
+void mobsay(struct char_data *ch, const char *msg)
+{
+  char Gbuf[MAX_INPUT_LENGTH];
+
+  if (!msg || !*msg) {
+    log("SYSERR: No text in mobsay()");
+    return;
+  }
+  if (strlen(msg) > (MAX_INPUT_LENGTH - 1)) {
+    log("SYSERR: text too long in mobsay()");
+    return;
+  }
+  strcpy(Gbuf, msg);
+  do_say(ch, Gbuf, 0, 0);
+}
+
+// Fairy Follower Quest 21022000 
+
+SPECIAL(fairy_follower)
+{
+ 
+  if(!ch->master) { return FALSE; }
+
+ if (cmd) return FALSE;
+
+   switch (number(0, 80)) {
+   case 0:
+     cast_spell(ch, ch->master, NULL, SPELL_BLESS, ABT_SPELL);
+     return TRUE;
+   case 5:
+     cast_spell(ch, ch->master, NULL, SPELL_CURE_LIGHT, ABT_SPELL);
+     return TRUE;
+   case 10:
+     cast_spell(ch, ch->master, NULL, SPELL_ARMOR, ABT_SPELL);
+     return TRUE;
+   case 15:
+     cast_spell(ch, ch->master, NULL, SPELL_REFRESH, ABT_SPELL);
+     return TRUE;
+   case 20:
+     cast_spell(ch, ch->master, NULL, SPELL_FLY, ABT_SPELL);
+     return TRUE;
+   case 25:
+     if(!number(0, 30)) {
+       cast_spell(ch, ch->master, NULL, SPELL_REGENERATE, ABT_SPELL);
+       return TRUE;
+     }
+	else { return FALSE; }
+  case 30:
+       cast_spell(ch, ch->master, NULL, SPELL_INVISIBLE, ABT_SPELL);
+       return TRUE;
+  default:
+    return FALSE;
+
+  } // switch
+}
+
+
+ACMD(do_fairyfollower)
+{
+ 
+  struct char_data *fairy;
+  struct follow_type *f;
+
+  if (!GET_SKILL(ch, SKILL_FAIRYFOLLOWER)) {
+    send_to_char("You don't know how to do that.\r\n", ch);
+    return;
+  }
+
+  for (f = ch->followers; f; f = f->next) {
+    if (IN_ROOM(ch) == IN_ROOM(f->follower)) {
+      if (IS_MOB(f->follower)) {
+	send_to_char("You can't attact any fairies right now.\r\n", ch);
+	return;
+    
+      }
+    }
+  }
+
+  if(GET_MOVE(ch) <= 100 || !IS_GOOD(ch)) {
+    send_to_char("No fairies hear your call.\r\n", ch); 
+    return;
+  }
+  else {
+    improve_abil(ch, SKILL_FAIRYFOLLOWER, ABT_SKILL);
+    fairy = read_mobile(FAIRY, VIRTUAL);
+    char_to_room(fairy, IN_ROOM(ch));
+    act("You summon $n.\n", FALSE, fairy, 0, ch, TO_CHAR);
+    act("You summon $n.\n", FALSE, fairy, 0, ch, TO_VICT);
+    act("$N summons $n.\n", FALSE, fairy, 0, ch, TO_NOTVICT);
+    add_follower(fairy, ch);
+    GET_MOVE(ch) -= number(80, 99); 
+    WAIT_STATE(ch, PULSE_VIOLENCE * 3); 
+
+  }
+}
+
+
+SPECIAL(fairy_catch) 
+{
+  int num = 0, chance, r_num;
+  struct obj_data *obj, *item;
+  struct char_data *vict = (struct char_data *) me;
+
+  obj = get_obj_in_list_vis(ch, "bottle", ch->carrying);
+  chance = number(0, 65) + GET_LUCK(ch) + GET_DEX(ch);
+
+if (!cmd) { 
+  num = real_room(number(BOTTOM, TOP)); 
+  if(num) {
+ act("A fairy giggles and vanishes from your sight.", FALSE, vict, 0, 0 , TO_ROOM);
+
+    char_from_room(vict);
+    char_to_room(vict, num);
+    act("A fairy pops out of nowhere.", FALSE, vict, 0, 0, TO_ROOM);
+	return TRUE;
+  }
+  
+
+return FALSE; 
+}
+
+  if (CMD_IS("catch")) {
+    if(!(obj)) {
+          act("You try to catch $n with your bare hands, but fall flat on your face in the attempt.", FALSE, vict, 0, ch, TO_CHAR);
+          act("You try to catch $n with your bare hands, but fall flat on your face in the attempt.", FALSE, vict, 0, ch, TO_VICT);
+	  act("$N tries to catch $n with $m bare hands, but falls flat on $m face in the attempt.", FALSE, vict, 0, ch, TO_NOTVICT);
+	  GET_POS(ch) = POS_SITTING;
+	  WAIT_STATE(ch, PULSE_VIOLENCE * 3);
+	  return TRUE;
+    }
+    if(chance > number(98, 100)) { 
+           act("With a superb swipe, you catch $n in a bottle.", FALSE, vict, 0, ch, TO_CHAR);
+          act("With a superb swipe, you catch $n in a bottle.", FALSE, vict, 0, ch, TO_VICT);
+	  act("With a superb swipe, $N catches $n in a bottle.", FALSE, vict, 0, ch, TO_NOTVICT);
+
+          r_num = real_object(BOTTLE); /* ... */
+          item = read_object(r_num, REAL);
+          obj_to_char(item, ch);
+          obj_from_char(obj);
+          extract_obj(obj);
+          extract_char(vict);
+
+          return TRUE;
+
+    }
+    else {
+          act("You try to catch $n in a bottle, but fall flat on your face in the attempt.", FALSE, vict, 0, ch, TO_CHAR);
+          act("You try to catch $n in a bottle, but fall flat on your face in the attempt.", FALSE, vict, 0, ch, TO_VICT);
+	  act("$N tries to catch $n in a bottle, but falls flat on $m face in the attempt.", FALSE, vict, 0, ch, TO_NOTVICT);
+	  GET_POS(ch) = POS_SITTING;
+	  WAIT_STATE(ch, PULSE_VIOLENCE * 3);
+	  return TRUE;
+
+    }
+return FALSE;
+
+  }
+  return FALSE;
+} 
+
+SPECIAL(fairy_hermit)
+{
+  struct obj_data *item;
+  struct char_data *vict = (struct char_data *) me;
+
+  if(!cmd) {
+	if(!number(0, 15)) { 
+          mobsay(vict, "I am in need of assistance brave sir!");
+          mobsay(vict, "Type OKAY to hear my sad tale.");
+          return TRUE;
+       }
+       return FALSE;
+  }
+
+if(CMD_IS("okay")) {
+mobsay(vict, "Long ago I wasn't the horrid and wretched man I am now.");
+mobsay(vict, "I had a family and land, a good life. Then one day a terrible");
+mobsay(vict, "plague swept across the land, killing my crops, and my family.");
+mobsay(vict, "I was one of the lucky ones, it just left me like this.");
+mobsay(vict, "I am to weak to help myself now. I need you to capture a fairy");
+mobsay(vict, "in a bottle and bring it back to me, it is my only hope. I will");
+mobsay(vict, "pay you everything I have. Please do this.");
+send_to_char("CATCH a fairy in bottle and bring it back to the Hermit for a reward.\r\n", ch);
+	return TRUE;
+}
+
+if (CMD_IS("give")) {
+  
+    for (item = ch->carrying; item; item = item->next_content) {
+      if (item->item_number == real_object(BOTTLE)) {
+	obj_from_char(item);
+	extract_obj(item);
+send_to_char("The Hermit takes the fairy in a bottle from you.\r\n", ch);        
+send_to_char("The Hermit takes the bottle and adds some burbon and spice.\r\n", ch);
+send_to_char("After shaking the bottle harshly for a few minutes, the Hermits drinks it down\r\n in one gulp, fairy and all.\r\n", ch); 
+send_to_char("The Hermit's skin glows brightly for moment, blinding you.\r\n", ch);
+send_to_char("When your sight returns you see a handsome young man standing in the place
+of the hermit.\r\n", ch);
+mobsay(vict, "The only way I know how to repay you is impart some of the magic of the fairy upon you. For now on you will be able to summon fairies at will with the FAIRYFOLLOWER skill!");
+send_to_char("The Hermit waves and runs off naked into the forest.\r\n", ch); 
+ 
+        if (GET_SKILL(ch, SKILL_FAIRYFOLLOWER) == 0) {
+	SET_SKILL(ch, SKILL_FAIRYFOLLOWER, 50); 
+	}
+	return TRUE;
+      }
+    }
+    return FALSE;
+}
+return FALSE;
+}
+
+// End of Fairy Follower

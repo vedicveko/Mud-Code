@@ -1,0 +1,93 @@
+/*
+# By Vedic <vedic@thevedic.net>
+# From Aarait telnet://thevedic.net:4000 http://thevedic.net/~aarait
+# Share and share alike.
+*/
+
+Has it every bothered you that a person could hold a twig of intelligence, a
+lantern, a two handed sword of goblin slaying, and a shield all at the
+same time?
+
+This snippet will remedy that. Now a player will only be able to hold one
+item per hand. It also adds a new item flag, ITEM_TWO_HANDED, in order
+to force people to really use two hands for that two handed sword of goblin
+slaying.
+
+If you like this snippet, or any other snippet I have done, I ask that you
+please give back to the mud community by releasing your own snippets. For 
+myself and other included the free areas and snippets found on the Internet
+were what turned us onto creating our muds.
+
+Dean Vaughan - 3/16/02
+
+
+Now onto the good stuff.
+
+-- 
+
+Open act.item.c.
+
+Before the perform_put() function add:
+
+int free_hands(struct char_data *ch) {
+   int used = 2;
+   if(GET_EQ(ch, WEAR_HOLD)) { used -= 1; }
+   if(GET_EQ(ch, WEAR_LIGHT)) { used -= 1; }
+   if(GET_EQ(ch, WEAR_SHIELD)) { used -= 1; }
+   if(GET_EQ(ch, WEAR_OFFHAND)) { used -= 1; }
+   if(GET_EQ(ch, WEAR_WIELD)) {
+      if(IS_OBJ_STAT(GET_EQ(ch, WEAR_WIELD), ITEM_TWO_HANDED)) {
+        used -= 2;
+      }
+      else { used -= 1; }
+   }
+
+
+   return used;
+
+}
+
+Further down in act.item.c in the:
+
+void perform_wear(struct char_data * ch, struct obj_data * obj, int where) {
+
+function, look for this:
+
+  if (GET_EQ(ch, where)) {
+    send_to_char(already_wearing[where], ch);
+    return;
+  }
+
+Directly below that chunk of code add:
+
+  if(where == WEAR_WIELD || where == WEAR_SHIELD || where == WEAR_LIGHT || where == WEAR_HOLD) {
+    if(free_hands(ch) < 1 && !IS_OBJ_STAT(obj, ITEM_TWO_HANDED)) {
+       send_to_char("You hands are full!\r\n", ch);
+       return;
+    }
+    if(free_hands(ch) < 2 && IS_OBJ_STAT(obj, ITEM_TWO_HANDED)) {
+       send_to_char("Your hands are full!\r\n", ch);
+       return;
+    }
+  }
+
+
+Save the file and exit.
+
+In structs.h after #define ITEM_NOSELL (1 << 16)) add:
+#define ITEM_TWO_HANDED     (1 << 17)
+
+You may have to change the above numbers if you've made other modifications
+to your mud. If you have questions you may email me.
+
+Save the file and exit.
+
+In constants.c add:
+
+"TWO_HANDED",
+
+to the end of the const char *extra_bits[] array.
+
+Save the file and exit.
+
+That's it! If all went well you should be able to compile your mud and no long have to worry about four handed people.

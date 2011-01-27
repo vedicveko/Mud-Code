@@ -1,0 +1,155 @@
+
+in magic.c :
+
+  case SPELL_DUMBNESS:
+    if (!pk_allowed && !pkill_ok(ch, victim))
+      return;
+    af[0].location = APPLY_INT;
+    if (mag_savingthrow(victim, savetype))
+      af[0].duration = 1;
+    else
+      af[0].duration = 4;
+    af[0].modifier = -3;
+    accum_duration = TRUE;
+    to_vict = "You feel dumber somehow.";
+    break;
+
+in spell_parser.c :
+
+ spello(SPELL_DUMBNESS, 30, 10, 3, POS_FIGHTING,
+	TAR_CHAR_ROOM | TAR_FIGHT_VICT, TRUE, MAG_AFFECTS);
+
+in constants.c :
+
+ "You feel smarter.",
+
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+
+magic.c :
+
+  case SPELL_PHANTOM_ARMOR:
+    af[0].location = APPLY_AC;
+    af[0].duration = 2;
+    af[0].modifier = -40;
+    accum_duration = FALSE;
+    to_vict = "The spirits on the undead come forth to protect you!";
+    to_room = "$n is surrounded by a hoard of phantoms.";
+    break;
+
+spell_parser.c :
+
+  spello(SPELL_PHANTOM_ARMOR, 53, 30, 5, POS_STANDING,
+	TAR_CHAR_ROOM | TAR_SELF_ONLY, FALSE, MAG_AFFECTS);
+
+constants.c :
+
+ "The phantoms leave you.",
+
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+
+magic.c :
+
+  case SPELL_SPECTRAL_WINGS:
+    af[0].duration = level * 2;
+    af[0].bitvector = AFF_FLY;
+    to_vict = "You sprout a pair of spectral wings and rise from the ground!";
+    to_room = "$n sprouts a pair of spectral wings and rises from the ground.";
+    break;
+
+constants.c :
+
+  "Your spectral wings vanish and you fall to the ground."
+
+spell_parser.c :
+
+  spello(SPELL_SPECTRAL_WINGS, 50, 30, 5, POS_STANDING,
+	TAR_CHAR_ROOM | TAR_SELF_ONLY, FALSE, MAG_AFFECTS);
+
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+
+/* Yes I ripped this off of call by Rodger
+  -- Vedic */
+
+spells.c :
+
+#define CALL_MOVE_COST 50
+#define CALL_HORSE 30
+#define CALL_UNICORN 31
+#define CALL_PEGASUS 32
+#define CALL_DRAGON 33
+
+ASPELL(spell_undead_mount) {
+
+  struct char_data *pet;
+  struct follow_type *f;
+  int chance;
+  int penalty=0;
+
+
+  if (GET_SKILL(ch, SPELL_UNDEAD_MOUNT) == 0)
+    {
+    send_to_char("That spell is unfamiliar to you.\r\n", ch);
+    return ;
+    }
+
+  for (f = ch->followers; f; f = f->next)
+    if (IN_ROOM(ch) == IN_ROOM(f->follower)) {
+      if (IS_MOB(f->follower))
+        penalty+=5;
+      else
+        penalty+=2;
+    }
+
+  if (GET_CHA(ch) < (penalty + 5)) {
+    send_to_char("You can not attract any more followers now.\r\n", ch);
+    return;
+  }
+
+  chance = number(0, GET_SKILL(ch, SPELL_UNDEAD_MOUNT) + GET_LEVEL(ch));
+
+  if (chance < 50) {
+    act("Nothing Happens.", FALSE, ch, 0, 0, TO_CHAR);
+    return;
+
+  } else if (chance  < 70)
+    pet = read_mobile(CALL_HORSE, VIRTUAL);
+  else if (chance  < 90)
+    pet = read_mobile(CALL_UNICORN, VIRTUAL);
+  else if (chance  < 100)
+    pet = read_mobile(CALL_PEGASUS, VIRTUAL);
+  else
+    pet = read_mobile(CALL_DRAGON, VIRTUAL);
+
+  act("You summon $N to be your mount.", FALSE, ch, 0, pet, TO_CHAR);
+  act("$n summons $N to be $m mount.", FALSE, ch, 0, pet, TO_ROOM);
+
+  IS_CARRYING_W(pet) = 1000;
+  IS_CARRYING_N(pet) = 100;
+  SET_BIT_AR(AFF_FLAGS(pet), AFF_CHARM);  
+
+  char_to_room(pet, IN_ROOM(ch));
+  add_follower(pet, ch);
+}
+
+spell_parser.c :
+
+  spello(SPELL_UNDEAD_MOUNT, 50, 40, 2, POS_STANDING,
+	TAR_SELF_ONLY | TAR_CHAR_ROOM, FALSE, MAG_MANUAL);
+
+constants.c :
+
+  "!undead mount!"
+ 
+
+
+
+
+ 
+
+  
+
+
+
+
+
+

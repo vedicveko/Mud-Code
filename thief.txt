@@ -1,0 +1,228 @@
+/*
+# By Vedic <vedic@thevedic.net>
+# From Dibrova telnet://thevedic.net:5150 http://thevedic.net/~dibrova
+# Share and share alike.
+*/
+
+On Dibrova, NPC Thiefs can kick some butt, not only do they have
+a finite state machine combat AI which works out very well, they
+can also steal the lint out of a players belly button. Here are the
+changes you'll need to make your thieves steals like a pro. Also included
+is some code for AGGRO mob back stabbing.
+
+
+In mobact.c, replace the old "/* Aggressive Mobs */" with this.
+
+-BEGIN-
+
+    /* Aggressive Mobs */
+    if (MOB_FLAGGED(ch, MOB_AGGRESSIVE) || MOB_FLAGGED(ch, MOB_AGGR_TO_ALIGN)) {
+      found = FALSE;
+      for (vict = world[ch->in_room].people; vict && !found; vict = vict->next_in_room) {
+	if (IS_NPC(vict) || !CAN_SEE(ch, vict) ||
+            PRF_FLAGGED(vict, PRF_NOHASSLE) ||
+            AFF_FLAGGED(vict, AFF_INCOGNITO))
+	  continue;
+	if (MOB_FLAGGED(ch, MOB_WIMPY) && AWAKE(vict))
+	  continue;
+	if (!MOB_FLAGGED(ch, MOB_AGGR_TO_ALIGN) ||
+	    (MOB_FLAGGED(ch, MOB_AGGR_EVIL) && IS_EVIL(vict)) ||
+	    (MOB_FLAGGED(ch, MOB_AGGR_NEUTRAL) && IS_NEUTRAL(vict)) ||
+	    (MOB_FLAGGED(ch, MOB_AGGR_GOOD) && IS_GOOD(vict))) {
+	  if (GET_CLASS(ch) == CLASS_NPC_THIEF) {
+	    /* Backstab the bitch! */
+	    hit_roll = number (1,100) + GET_STR(ch);
+	    to_hit = (100 - (int) (100*GET_LEVEL(ch)/250));
+	    if (GET_LEVEL(vict) >= LVL_IMMORT)  
+	      hit_roll = 0;
+
+	    if (GET_EQ(ch, WEAR_WIELD)){
+	      if (GET_OBJ_VAL(GET_EQ(ch, WEAR_WIELD), 3) == (TYPE_PIERCE - TYPE_HIT)) {
+
+		if (AWAKE(vict) && (hit_roll < to_hit)) {
+		  damage(ch, vict, 0, SKILL_BACKSTAB, ABT_SKILL);
+		} else {
+		  damage(ch, vict, GET_LEVEL(ch) * 3, SKILL_BACKSTAB, ABT_SKILL);
+		}	  
+		
+		found = TRUE;
+	      } 
+	    }  
+	    else {
+		hit(ch, vict, TYPE_UNDEFINED);
+		found = TRUE;
+	    }
+	  } 
+          else {
+	  hit(ch, vict, TYPE_UNDEFINED);
+	  found = TRUE;
+	  }
+	}
+      }
+    }
+
+-END-
+
+Now, after "/* Add new mobile actions here */" add this:
+
+-BEGIN-
+
+    if (GET_CLASS(ch) == CLASS_NPC_THIEF) {
+      found = FALSE;
+      for (vict = world[ch->in_room].people; vict && !found; vict = vict->next_in_room) {
+
+	if (IS_NPC(vict) || !CAN_SEE(ch, vict)) { continue; }
+
+	switch(number(0, 8)) {
+          case 1:
+	    mob_steal_eq(ch, vict);
+	    found = TRUE;
+	    break;
+	  case 2:
+	    mob_steal_from_inv(ch, vict);
+	    found = TRUE;
+	    break;
+	  case 3:
+	    npc_steal(ch, vict);
+	    found = TRUE;
+	    break;
+          default:
+	    break;
+	}
+      }
+    }
+
+-END-
+
+Dibrova has a mob_skills.c mob_skills.h file for this type of thing, you can use that approach or just put them
+where ever and then prototype these functions in whatever file you use them in. 
+
+-BEGIN-
+
+void mob_steal_eq(struct char_data *ch, struct char_data *vict)
+{
+
+  struct obj_data *obj;
+  int percent, to_steal = 0, save;
+
+  percent = number(1, GET_LEVEL(ch)) + GET_DEX(ch);
+  save = number(1, GET_LEVEL(vict)) + GET_DEX(vict);
+
+  if (GET_POS(vict) <= POS_SLEEPING)
+    save = 0;		/* ALWAYS SUCCESS */
+
+  if (GET_POS(ch) != POS_STANDING) { return; }
+
+  switch(number(0, NUM_WEARS)) {
+      
+  case 1:
+    if (GET_EQ(vict, WEAR_FINGER_R)) {
+      to_steal = WEAR_FINGER_R;
+    }
+    break;
+  case 2:
+    if (GET_EQ(vict, WEAR_FINGER_L)) {
+      to_steal = WEAR_FINGER_L;
+    }
+    break;
+  case 3:
+    if (GET_EQ(vict, WEAR_NECK_1)) {
+      to_steal = WEAR_NECK_1;
+    }
+    break;
+  case 4:
+    if (GET_EQ(vict, WEAR_NECK_2)) {
+      to_steal = WEAR_NECK_2;
+    }
+    break;
+  case 14:
+    if (GET_EQ(vict, WEAR_WRIST_R)) {
+      to_steal = WEAR_WRIST_R;
+    }
+    break;
+  case 15:
+    if (GET_EQ(vict, WEAR_WRIST_L)) {
+      to_steal = WEAR_WRIST_L;
+    }
+    break;
+  case 18:
+    if (GET_EQ(vict, WEAR_EAR_R)) {
+      to_steal = WEAR_EAR_R;
+    }
+    break;
+  case 19:
+    if (GET_EQ(vict, WEAR_EAR_L)) {
+      to_steal = WEAR_EAR_L;
+    }
+    break;
+  case 20:
+    if (GET_EQ(vict, WEAR_THUMB_R)) {
+      to_steal = WEAR_THUMB_R;
+    }
+    break;
+  case 21:
+    if (GET_EQ(vict, WEAR_THUMB_L)) {
+      to_steal = WEAR_THUMB_L;
+    }
+    break;
+  default:
+    break;
+  }
+  
+  if (!to_steal) { return; }
+  
+  obj = GET_EQ(vict, to_steal);
+  
+  if (percent > save) {
+    act("$n steals $p from $N.", FALSE, ch, obj, vict, TO_NOTVICT);
+    obj_to_char(unequip_char(vict, to_steal), ch);
+    sprintf(buf, "THIEF: %s steals %s from %s\r\n", GET_NAME(ch), obj->short_description, GET_NAME(vict));
+    log(buf);
+  } else {
+    act("$n tried to steal something from you!", FALSE, ch, 0, vict, TO_VICT);
+    act("$n tries to steal something from $N.", TRUE, ch, 0, vict, TO_NOTVICT);
+  }
+  
+}
+
+void mob_steal_from_inv(struct char_data *ch, struct char_data *vict)
+{
+
+  struct obj_data *obj, *list;
+  int percent, save, found = 0;
+
+  percent = number(1, GET_LEVEL(ch)) + GET_DEX(ch);
+  save = number(1, GET_LEVEL(vict)) + GET_DEX(vict);
+
+  if (GET_POS(vict) <= POS_SLEEPING)
+    save = 0;		/* ALWAYS SUCCESS */
+
+  if (GET_POS(ch) != POS_STANDING) { return; }
+
+  
+  list = vict->carrying;
+  for (obj = list; obj; obj = obj->next_content) {
+    if (CAN_SEE_OBJ(vict, obj)) {
+      found = 1;
+    }
+  }
+  if (found == 1) {
+    for (obj = list; obj; obj = obj->next_content)
+      {
+	if (percent > save) {
+	  obj_from_char(obj);
+	  obj_to_char(obj, ch);
+	  act("$n steals $p from $N.", FALSE, ch, obj, vict, TO_NOTVICT);
+          sprintf(buf, "THIEF: %s steals %s from %s\r\n", GET_NAME(ch), obj->short_description, GET_NAME(vict));
+	  log(buf);
+	  return;
+	} else {
+	  act("$n tried to steal something from you!", FALSE, ch, 0, vict, TO_VICT);
+	  act("$n tries to steal something from $N.", TRUE, ch, 0, vict, TO_NOTVICT);
+	  return;
+	}
+      }
+  }
+}
+
+-END-

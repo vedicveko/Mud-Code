@@ -1,0 +1,290 @@
+
+ACMD(do_knockout)
+{
+  struct char_data *vict;
+  int percent, prob;
+
+  one_argument(argument, buf);
+
+  if (!GET_SKILL(ch, SKILL_KNOCKOUT)) {
+    send_to_char("You don't know how!\r\n", ch);
+    return;
+  }
+
+  if (!(vict = get_char_room_vis(ch, buf))) {
+    if (FIGHTING(ch)) {
+      vict = FIGHTING(ch);
+    } else {
+      send_to_char("Knockout who?\r\n", ch);
+      return;
+    }
+  }
+
+  if (!pk_allowed && !pkill_ok(ch, vict)) {
+    send_to_char("You are forbidden to attack players here.\r\n", ch);
+    return;
+  }
+ 
+  if (vict == ch) {
+    send_to_char("That would be funny to see.\r\n", ch);
+    return;
+  }
+  if (!GET_EQ(ch, WEAR_WIELD)) {
+    send_to_char("You need to wield a weapon to make it a success.\r\n", ch);
+    return;
+  }
+  if (GET_OBJ_VAL(GET_EQ(ch, WEAR_WIELD), 3) != TYPE_BLUDGEON - TYPE_HIT) {
+    send_to_char("Only bludgeoning weapons can be used for knockingout.\r\n", ch);
+    return;
+  }
+  if (FIGHTING(vict)) {
+    send_to_char("You can't knock out a fighting person -- they're too alert!\r\n", ch);
+    return;
+  }
+
+  if (MOB_FLAGGED(vict, MOB_AWARE)) {
+    act("You notice $N raising $s weapon at you!", FALSE, vict, 0, ch, TO_CHAR);
+    act("$e notices you raising your weapon!", FALSE, vict, 0, ch, TO_VICT);
+    act("$n notices $N raising $s weapon at $m!", FALSE, vict, 0, ch, TO_NOTVICT);
+    hit(vict, ch, TYPE_UNDEFINED);
+    WAIT_STATE(ch, PULSE_VIOLENCE * 2);
+    return;
+  }
+
+  percent = number(1, 101);	/* 101% is a complete failure */
+  prob = GET_SKILL(ch, SKILL_KNOCKOUT);
+
+  if (AWAKE(vict) && (percent < prob)) {
+    act("You are knocked out when $N hits you upside your head.", FALSE, vict, 0, ch, TO_CHAR);
+    act("$n sees stars, and slumps over, knocked out.", FALSE, vict, 0, ch, TO_VICT);
+    act("$n sees stars, and slumps over, knocked out, after $N brains $m.", FALSE, vict, 0, ch, TO_NOTVICT);
+    
+    cast_spell(ch, vict, NULL, SPELL_SLEEP);
+    WAIT_STATE(ch, PULSE_VIOLENCE * 2);
+
+  }  else {
+    act("You notice $N raising $s weapon at you!", FALSE, vict, 0, ch, TO_CHAR);
+    act("$e notices you raising your weapon!", FALSE, vict, 0, ch, TO_VICT);
+    act("$n notices $N raising $s weapon at $m!", FALSE, vict, 0, ch, TO_NOTVICT);
+    hit(ch, vict, SKILL_KNOCKOUT);
+    WAIT_STATE(ch, PULSE_VIOLENCE * 2);
+  }
+}
+
+
+
+ACMD(do_throw)
+{ 
+
+  struct char_data *vict;
+  struct obj_data *obj;
+  int percent, prob;
+  int damage_val;
+  two_arguments(argument, buf, buf2);
+
+
+  if (!GET_SKILL(ch, SKILL_THROW)) {
+    send_to_char("You don't know how!\r\n", ch);
+    return;
+  }
+
+  if (!(vict = get_char_room_vis(ch, buf2))) {
+    if (FIGHTING(ch)) {
+      vict = FIGHTING(ch);
+    } else {
+      send_to_char("Throw what at who?\r\n", ch);
+      return;
+    }
+  }
+
+  if (!pk_allowed && !pkill_ok(ch, vict)) {
+    send_to_char("You are forbidden to attack players here.\r\n", ch);
+    return;
+  }
+
+ if (!(obj = get_obj_in_list_vis(ch, buf, ch->carrying))) {
+    send_to_char("Throw what at who?\r\n", ch);
+    return;
+  }
+  
+  if (vict == ch) {
+    send_to_char("That would be funny to see.\r\n", ch);
+    return;
+  }
+
+  percent = number(1, 101);	/* 101% is a complete failure */
+  prob = GET_SKILL(ch, SKILL_THROW);
+
+  damage_val = GET_STR(ch) / 2 + GET_OBJ_WEIGHT(obj)  + GET_LEVEL(ch);
+
+  if (percent > prob) {
+    /* miss like a mother fucker. */
+      damage(ch, vict, 0, SKILL_THROW);
+        /* victim */
+      act("$N throws $p at you and misses by a long shot.", FALSE, vict, obj, ch, TO_CHAR);
+        /* ch */
+      act("You throw $p at $n but, miss by a long shot.", FALSE, vict, obj, ch, TO_VICT);
+        /* everyone else */
+      act("$N throws $p at $n but, misses by a long shot.", FALSE, vict, obj, ch, TO_NOTVICT);
+      return;
+  }
+
+  else {
+      if (GET_OBJ_TYPE(obj) == ITEM_SCROLL || (GET_OBJ_TYPE(obj) == ITEM_NOTE)) {
+        /* victim */
+        act("$N hits you upside the head with $p and exclaims, Bad Doggie!", FALSE, vict, obj, ch, TO_CHAR);
+        /* ch */
+        act("You hit $n in the head with $p and exclaim, Bad Doggie!", FALSE, vict, obj, ch, TO_VICT);
+        /* everyone else */
+        act("$N hits $n in the head with $p and exclaims, Bad Doggie!", FALSE, vict, obj, ch, TO_NOTVICT);
+        extract_obj(obj);
+
+      }
+
+      else if (GET_OBJ_TYPE(obj) == ITEM_WEAPON) {
+       /* victim */
+        act("$N throws $p at you and cuts your chest.", FALSE, vict, obj, ch, TO_CHAR);
+        /* ch */
+        act("You throw $p at $n and cut $m chest.", FALSE, vict, obj, ch, TO_VICT);
+        /* everyone else */
+        act("$N throws $p at $n and cuts $m chest.", FALSE, vict, obj, ch, TO_NOTVICT);
+        extract_obj(obj);
+      }
+
+      else if (GET_OBJ_TYPE(obj) == ITEM_POTION) {
+
+         /* victim */
+        act("$N throws $p at you and it goes right down your throat!", FALSE, vict, obj, ch, TO_CHAR);
+        /* ch */
+        act("You throw $p at $n and it goes right down $m throat!", FALSE, vict, obj, ch, TO_VICT);
+        /* everyone else */
+        act("$N throws $p at $n and it goes right down $m throat!", FALSE, vict, obj, ch, TO_NOTVICT);
+        
+        if (chance(50)) {
+
+           mag_objectmagic(vict, obj, buf);
+	}	
+	else {
+
+        /* victim */
+        act("You gag and spit out $p.", FALSE, vict, obj, ch, TO_CHAR);
+        /* ch */
+        act("$n gags and spits out $p.", FALSE, vict, obj, ch, TO_VICT);
+        /* everyone else */
+        act("$n gags and spits out $p.", FALSE, vict, obj, ch, TO_NOTVICT);
+	  
+	}
+      }
+
+      else {
+        act("$N throws $p and hits you square in the chest.", FALSE, vict, obj, ch, TO_CHAR);
+        /* ch */
+        act("You throw $p at $n and hit $m in the chest.", FALSE, vict, obj, ch, TO_VICT);
+        /* everyone else */
+        act("$N throws $p at $n and hits $m in the chest.", FALSE, vict, obj, ch, TO_NOTVICT);
+       extract_obj(obj);
+      }
+
+  }
+
+  damage(ch, vict, damage_val, SKILL_THROW);
+  WAIT_STATE(ch, PULSE_VIOLENCE * 3);
+  /* all done */
+
+}
+
+
+ACMD(do_gut)
+{
+  struct char_data *vict;
+  int percent, prob, healthpercent;
+  struct obj_data *piece;
+
+  one_argument(argument, arg);
+
+  if (!GET_SKILL(ch, SKILL_GUT)) {
+    send_to_char("You don't know how!\r\n", ch);
+    return;
+  }
+
+  if (!(vict = get_char_room_vis(ch, arg))) {
+    if (FIGHTING(ch)) {
+      vict = FIGHTING(ch);
+    } else {
+      send_to_char("Gut who?\r\n", ch);
+      return;
+    }
+  }
+
+  if (!pk_allowed && !pkill_ok(ch, vict)) {
+    send_to_char("You are forbidden to attack players here.\r\n", ch);
+    return;
+  }
+
+  if (vict == ch) {
+    send_to_char("Aren't we funny today...\r\n", ch);
+    return;
+  }
+  if (!GET_EQ(ch, WEAR_WIELD)) {
+    send_to_char("You need to wield a weapon to make it a success.\r\n", ch);
+    return;
+  }
+  if (GET_OBJ_VAL(GET_EQ(ch, WEAR_WIELD), 3) != TYPE_SLASH - TYPE_HIT) {
+    send_to_char("Only slashing weapons can be used for gutting.\r\n", ch);
+    return;
+  }
+  percent = number(1, 101);	/* 101% is a complete failure */
+  prob = GET_SKILL(ch, SKILL_GUT);
+
+  if (GET_MAX_HIT(vict) > 0) 
+    healthpercent = (100 * GET_HIT(vict)) / GET_MAX_HIT(vict);
+  else 
+    healthpercent = -1;	
+ 
+  if (healthpercent >= 10) {
+    send_to_char("They are not hurt enough for you to attempt that.\r\n", ch);
+    hit(vict, ch, TYPE_UNDEFINED);
+    WAIT_STATE(ch, PULSE_VIOLENCE * 2);
+    return;
+  }
+
+  if (percent > prob) {
+    sprintf(buf, "Even in %s's bad state, they manage to avoid your wild slash.\r\n", GET_NAME(vict));
+    send_to_char(buf, ch);
+    send_to_char("You avoid a wild slash at your midsection.\r\n", ch);
+  } else {
+
+    /* EWWWW */
+    GET_HIT(vict) = -10;
+ 
+    act("You gut $N!", FALSE, ch, 0, vict, TO_CHAR);
+    act("$N guts you!", FALSE, vict, 0, ch, TO_CHAR);
+    act("$n brutally guts $N!", FALSE, ch, 0, vict, TO_NOTVICT);
+
+    act("$N looks down in horror as their intestines spill out!", FALSE, ch, 0, vict, TO_ROOM);
+    act("$N looks down in horror as their intestines spill out!", FALSE, ch, 0, vict, TO_CHAR);
+    act("$N looks down in horror as their intestines spill out!", FALSE, vict, 0, ch, TO_CHAR);
+   hit(vict, ch, TYPE_UNDEFINED);
+
+  piece = create_obj();
+
+  piece->name = "intestine";
+  piece->short_description = "An icky pile of intestines";
+  piece->description = "An icky pile of intestines is here - colon and all.";
+
+  piece->item_number = NOTHING;
+  piece->in_room = NOWHERE;
+  SET_BIT_AR(GET_OBJ_WEAR(piece), ITEM_WEAR_TAKE);
+  GET_OBJ_TYPE(piece) = ITEM_FOOD;
+  GET_OBJ_VAL(piece, 0) = 1;   
+  GET_OBJ_VAL(piece, 3) = 1;   /* watch what you eat. */
+  SET_BIT_AR(GET_OBJ_EXTRA(piece), ITEM_NODONATE);
+  GET_OBJ_WEIGHT(piece) = 1;
+  GET_OBJ_RENT(piece) = 1;
+  obj_to_room(piece, ch->in_room);
+
+    WAIT_STATE(vict, PULSE_VIOLENCE * 2);
+    update_pos(vict);
+  }
+
+}

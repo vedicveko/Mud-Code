@@ -1,0 +1,182 @@
+Dibrova has a pretty custom skill system, most of these will have to be ported
+someway.
+
+
+ACMD(do_drown)
+{
+
+  struct char_data *vict;
+  int flail, prob;
+
+  if (!GET_SKILL(ch, SKILL_DROWN)) {
+    send_to_char("You have no idea how.\r\n", ch);
+    return;
+  }
+
+  one_argument(argument, arg);
+
+  if (!(vict = get_char_room_vis(ch, arg))) {
+    if (FIGHTING(ch)) {
+      vict = FIGHTING(ch);
+    } else {
+      send_to_char("Drown who?\r\n", ch);
+      return;
+    }
+  }
+  if (vict == ch) {
+    send_to_char("Aren't we funny today...\r\n", ch);
+    return;
+  }
+  if (!pk_allowed && !pkill_ok(ch, vict)) {
+    send_to_char("You are forbidden to attack players here.\r\n", ch);
+    return;
+  }
+
+  if ((SECT(ch->in_room) != SECT_WATER_NOSWIM) ||
+      (SECT(ch->in_room) != SECT_WATER_SWIM)) {
+    send_to_char("Drowning someone on dry land is pretty damn hard.\r\n", ch);
+    return;
+  }
+
+  if (IS_NPC(vict)) {
+    flail = number(1, 130);
+  }
+  else {
+    flail = GET_SKILL(vict, SKILL_FLAIL) + GET_STR(vict) + GET_DEX(vict);
+  }
+  prob = GET_SKILL(ch, SKILL_DROWN) + GET_STR(ch) + GET_DEX(ch);
+
+  if (flail > prob) {
+    damage(ch, vict, 0, SKILL_CHOP, ABT_SKILL);
+    improve_abil(ch, SKILL_DROWN, ABT_SKILL);
+  } else
+    damage(ch, vict, GET_SKILL(ch, SKILL_DROWN), SKILL_DROWN, ABT_SKILL);
+
+
+  WAIT_STATE(ch, PULSE_VIOLENCE);
+}
+
+
+ACMD(do_chop)
+{
+  struct char_data *vict;
+  int percent, prob;
+
+  if (!GET_SKILL(ch, SKILL_CHOP)) {
+    send_to_char("You have no idea how.\r\n", ch);
+    return;
+  }
+
+  one_argument(argument, arg);
+
+  if (!(vict = get_char_room_vis(ch, arg))) {
+    if (FIGHTING(ch)) {
+      vict = FIGHTING(ch);
+    } else {
+      send_to_char("Chop who?\r\n", ch);
+      return;
+    }
+  }
+  if (vict == ch) {
+    send_to_char("Aren't we funny today...\r\n", ch);
+    return;
+  }
+
+  if (!pk_allowed && !pkill_ok(ch, vict)) {
+    send_to_char("You are forbidden to attack players here.\r\n", ch);
+    return;
+  }
+
+  percent = number(1, 101);
+  prob = GET_SKILL(ch, SKILL_CHOP);
+
+  if (percent > prob) {
+    damage(ch, vict, 0, SKILL_CHOP, ABT_SKILL);
+    improve_abil(ch, SKILL_CHOP, ABT_SKILL);
+  } else
+    damage(ch, vict, GET_QI(ch) / 3, SKILL_CHOP, ABT_SKILL);
+  WAIT_STATE(ch, PULSE_VIOLENCE * 2);
+}
+
+* Chop * Where'd this come from? * 
+M
+ 50
+You side-swing your hand full force into $N's throat, causing $M to choak on $S crushed windpipe and die!
+$n swings $s hand sideways into $N's throat, crushing $S windpipe, killing $M instantly!
+$n slams $s hand sideways into your throat, crushing your windpipe.
+You swing with all your force at $N, but miss by just a slight bit.
+$n swings at you with the side of his hand, but misses narrowly.
+$n swings at $N with the side of $s hand, but misses.
+$N staggers back from the solid /ccchop/c0 you deliver to him.
+$n /ccchops/c0 you soundly with the flat of $s hand.
+$N staggers slightly from the /ccchop/c0 $n delivers.
+Yeah, right... chop all you like. You'll be lucky to get away unbitchslapped.
+Seems as though $n might be trying some martial arts on yo ass - bitchslap, please?
+Tsk tsk. Only a fool attempts to harm a God. 
+
+
+ 
+ACMD(do_kickflip)
+{
+  struct char_data *vict;
+  int percent, prob;
+
+  one_argument(argument, arg);
+
+  if (!GET_SKILL(ch, SKILL_KICKFLIP)) {
+    send_to_char("You have no idea how.\r\n", ch);
+    return;
+  }
+
+  if (!(vict = get_char_room_vis(ch, arg))) {
+    if (FIGHTING(ch)) {
+      vict = FIGHTING(ch);
+    } else {
+      send_to_char("Kickflip who?\r\n", ch);
+      return;
+    }
+  }
+  if (vict == ch) {
+    send_to_char("Aren't we funny today...\r\n", ch);
+    return;
+  }
+  
+  if (!pk_allowed && !pkill_ok(ch, vict)) {
+    send_to_char("You are forbidden to attack players here.\r\n", ch);
+    return;
+  }
+
+  percent = number(1, 109);	/* 109% is a complete failure */
+  prob = GET_SKILL(ch, SKILL_KICKFLIP) + GET_DEX(ch) - GET_DEX(vict);
+
+  if (MOB_FLAGGED(vict, MOB_NOBASH))
+    percent = 109;
+
+  if (percent > prob) {
+    GET_POS(ch) = POS_SITTING;
+    damage(ch, vict, 0, SKILL_KICKFLIP, ABT_SKILL);
+    improve_abil(ch, SKILL_KICKFLIP, ABT_SKILL);
+    GET_HIT(ch) -= 5;
+  } else {
+    GET_POS(vict) = POS_SITTING;
+    WAIT_STATE(vict, PULSE_VIOLENCE);
+    damage(ch, vict, GET_LEVEL(ch) >> 1, SKILL_KICKFLIP, ABT_SKILL);
+  }
+  WAIT_STATE(ch, PULSE_VIOLENCE * 2);
+}
+
+* kickflip
+M
+ 49
+Your kickflip decapitates $N! $E falls in a lifeless heap.
+$n decapitates you with a devastating kickflip.
+$n flips head over heels, decapitating $N in the process.
+You attempt to kickflip, but end up landing on your head.
+$n attempts to proform a kickflip against you, but ends up landing on $s head.
+$n attempts to kickflip $N but, ends up landing on $s head.
+You flip head over heels kicking $N onto $S butt in the process!
+$n flips head over heels kicking you onto your butt!
+$n flips head over heels, kicking $N onto $S butt in the process!
+$N laughs at your petty attempt to kick $M.
+You can only laugh at $n's pathetic attempt to cause you harm.
+$n is stupid.

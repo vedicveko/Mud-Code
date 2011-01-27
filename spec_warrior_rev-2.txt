@@ -1,0 +1,49 @@
+SPECIAL(class_warrior)
+{
+  struct char_data *vict;
+  int att_type = 0;
+ 
+  if (cmd || !AWAKE(ch))
+    return FALSE;
+
+  /* if two people are fighting in a room */
+  if (FIGHTING(ch) && (FIGHTING(ch)->in_room == ch->in_room)) {
+
+      vict = FIGHTING(ch);
+
+      if (number(1, 5) == 5) {
+       act("$n foams at the mouth and growls in anger.", 1, ch, 0, 0, TO_ROOM);
+      }
+    if (GET_POS(ch) == POS_FIGHTING) {
+
+      att_type = number(1,40);          
+
+      switch(att_type) {  
+       case 1: case 2: case 3: case 4:
+	 /* bash */
+	 do_mob_bash(ch, vict);
+        break;
+      case 5: case 6: case 7: case 8: case 9: case 10:
+	do_generic_skill(ch, vict, SKILL_KICK);
+	break;
+
+      case 11:
+	do_generic_skill(ch, vict, SKILL_DEATHBLOW);
+	break;
+      case 12: case 13:     
+	  do_mob_disarm(ch, vict);
+	break; 
+      case 14: case 15: case 16:
+	do_generic_skill(ch, vict, SKILL_ROUNDHOUSE);
+	break;
+      case 17: 
+	do_generic_skill(ch, vict, SKILL_STUN);
+	break;
+      default:
+        break;
+      }
+  
+    }
+  }
+  return FALSE;  
+}

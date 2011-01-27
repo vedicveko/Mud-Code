@@ -1,0 +1,35 @@
+/*
+# Started 01042000 by Vedic <vedic@thevedic.net>
+# From Dibrova telnet://thevedic.net:5150 http://thevedic.net/~dibrova
+# Share and share alike.
+*/
+
+Here's a good use for LUCK, have a mob spare the player from death if he
+"lucks" out. 
+
+In fight.c
+
+After:
+
+  /* stop someone from fighting if they're stunned or worse */
+  if ((GET_POS(victim) <= POS_STUNNED) && (FIGHTING(victim) != NULL))
+    stop_fighting(victim);
+
+Add: 
+
+  if ((GET_HIT(victim) <= 10) && (GET_POS(victim) >= POS_STUNNED) && (FIGHTING(v
+ictim) != NULL) && (IS_NPC(ch)) && (GET_LUCK(victim) > number(15, 2000))) {
+
+
+ act("$N walks away. It must be your lucky day!", FALSE, victim, 0, ch, TO_CHAR)
+;
+ act("$N stops fighting and walks away. It must be $n's lucky day!", FALSE, vict
+im, 0, ch, TO_NOTVICT);
+ stop_fighting(victim);
+ stop_fighting(ch);
+
+
+  }
+
+
+

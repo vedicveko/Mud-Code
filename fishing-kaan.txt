@@ -1,0 +1,275 @@
+
+People are always complaining that they are bored on the MUD. They
+say that constant killing and questing can only last so long and
+then they find nothing to do. One of the things that I created to
+combat the boredom between kills and quests is fishing.
+
+This was added to Dibrova, a Circle bpl12, so some of the code in
+here might have to be changed slightly if you use any of the newer
+versions of Circle. In particular, I think our 'SET_BIT_AR' is
+shortened to 'SET_BIT' on the newer versions.
+
+Any questions on this, mail to kaan@dibrova.org or visit us at
+mud.dibrova.org port 4000
+
+
+
+So here we go, we'll start with all your defines and new variables:
+
+*******************
+*** In structs.h***
+*******************
+
+*** with all your Player Flags:
+#define PLR_FISHING     16  /* Player has a line in the water   */
+#define PLR_FISH_ON     17  /* Player has a fish on their line  */
+
+*** with your Item Types:
+#define ITEM_POLE       24              /* Fishing Pole         */
+
+*** with your Room Flags:
+#define ROOM_SALTWATER_FISH     16  /* Player can fish here     */
+#define ROOM_FRESHWATER_FISH    17  /* Player can fish here too */
+
+
+**********************
+*** In constants.c ***
+**********************
+
+*** add to const char *room_bits[]
+    "*",                        /* BFS MARK */
++    "SALTWATER_FISHING",
++    "FRESHWATER_FISHING",
+    "\n"
+
+*** add to const char *player_bits[]
+    "CRYO",
++    "FISHING",
++    "FISH_ON", 
+    "\n"
+
+*** add to const char *item_types[]
+    "FOUNTAIN",
++    "FISHING POLE", 
+    "\n"
+
+
+**********************************************************************
+*** Now for the basic commands, castout and reelin. I put these in ***
+*** act.item.c, but of course you can place them in whatever file  ***
+*** you see fit.                                                   ***
+**********************************************************************
+
+ACMD(do_castout)
+{
+  struct obj_data *pole;
+  int fail;
+
+  if (PLR_FLAGGED(ch, PLR_FISHING)) {
+    send_to_char("You are already fishing!\r\n", ch);
+    return;
+  }
+  if (!(pole = GET_EQ(ch, WEAR_HOLD)) ||
+      (GET_OBJ_TYPE(pole) != ITEM_POLE)) {
+    send_to_char("You need to be holding a fishing pole first.\r\n", ch);
+    return;
+  }
+  if (!ROOM_FLAGGED(ch->in_room, ROOM_SALTWATER_FISH) &&
+      !ROOM_FLAGGED(ch->in_room, ROOM_FRESHWATER_FISH)) {
+    send_to_char("This is not a good place to fish, you'll want to find a"
+                 " better spot.\r\n", ch);
+    return;
+  }
+  fail = number(1, 10);
+  if (fail <= 3) {
+    send_to_char("You pull your arm back and try to cast out your line, but "
+                 "it gets all tangled up.\r\nTry again.\r\n", ch);
+    act("$n pulls $s arm back, trying to cast $s fishing line out into the "
+        "water,\r\nbut ends up just a bit tangled.\r\n",
+         FALSE, ch, 0, 0, TO_ROOM);
+    return;
+  }
+  /* Ok, now they've gone through the checks, now set them fishing */
+  SET_BIT_AR(PLR_FLAGS(ch), PLR_FISHING);
+  send_to_char("You cast your line out into the water, hoping for a bite.\r\n", ch);
+  act("$n casts $s line out into the water, hoping to catch some food.\r\n",
+       FALSE, ch, 0, 0, TO_ROOM);
+  return;
+}
+
+ACMD(do_reelin)
+{
+  int success, f_num, fish_num;
+  struct obj_data *fish;
+
+  if (!PLR_FLAGGED(ch, PLR_FISHING)) {
+    send_to_char("You aren't even fishing!\r\n", ch);
+    return;
+  }
+  if (!PLR_FLAGGED(ch, PLR_FISH_ON)) {
+    send_to_char("You reel in your line, but alas... nothing on the end.\r\n"
+                 "Better luck next time.\r\n", ch);
+    REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_FISHING);
+    act("$n reels $s line in, but with nothing on the end.\r\n",
+        FALSE, ch, 0, 0, TO_ROOM);
+    return;
+  }
+
+  /* Ok, they are fishing and have a fish on */
+  success = number(1, 10);
+
+  REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_FISHING);
+  REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_FISH_ON);
+
+  if (success <= 6) {
+    send_to_char("You reel in your line, putting up a good fight, but you "
+                 "lose him!\r\nTry again?\r\n", ch);
+    act("$n reels $s line in, fighting with whatever is on the end, but loses "
+        "the catch.\r\n", FALSE, ch, 0, 0, TO_ROOM);
+    return;
+  }
+
+  /* We used object vnums 10030-10050 for our fish that people could
+   * catch. The below numbers reflect that use. If you wish to change
+   * the vnums of the fish, just change the numbers below. You can
+   * see that we seperated the type of fish by freshwater and salt
+   * water.
+   */
+  if (ROOM_FLAGGED(ch->in_room, ROOM_SALTWATER_FISH)) {
+    fish_num = number(10030, 10039);
+    f_num = real_object(fish_num);
+    fish = read_object(f_num, REAL);
+    sprintf(buf, "You reel in %s! Nice catch!\r\n", fish->short_description);
+    act("Wow! $n reels in a helluva catch! Looks like $p!\r\n",
+        FALSE, ch, fish, 0, TO_ROOM);
+    send_to_char(buf, ch);
+    obj_to_char(fish, ch);
+    return;
+  } else
+  if (ROOM_FLAGGED(ch->in_room, ROOM_FRESHWATER_FISH)) {
+    fish_num = number(10040, 10050);
+    f_num = real_object(fish_num);
+    fish = read_object(f_num, REAL);
+    sprintf(buf, "You reel in %s! Nice catch!\r\n", fish->short_description);
+    send_to_char(buf, ch);
+    obj_to_char(fish, ch);
+    return;
+  } else
+  send_to_char("You should never see this message, please report it.\r\n", ch);
+  return;
+}
+
+*****************
+*** in comm.c ***
+*****************
+
+*** add to your voids at the top of the file
+
+void check_fishing();
+
+/* in void_heartbeat with all the pulse checks, add this */
+  if (!(pulse % (40 * PASSES_PER_SEC)))
+    check_fishing();
+
+
+*******************************************************************
+*** I put check_fishing in weather.c on Dibrova only because so ***
+*** many other timed checks are in there. Obviously, this could ***
+*** go anywhere you want.                                       ***
+*******************************************************************
+
+void check_fishing() {
+
+  struct descriptor_data *d;
+  int bite;
+
+  for (d = descriptor_list; d; d = d->next) {
+    if (d->connected) continue;
+
+    /* if somehow they've moved from their fishing spot and still have *
+     * the fishing flag, remove the player flag now                    */
+    if (PLR_FLAGGED(d->character, PLR_FISHING) &&
+      (!ROOM_FLAGGED(d->character->in_room, ROOM_SALTWATER_FISH) &&
+       !ROOM_FLAGGED(d->character->in_room, ROOM_FRESHWATER_FISH)))
+      REMOVE_BIT_AR(PLR_FLAGS(d->character), PLR_FISHING);
+
+    if (PLR_FLAGGED(d->character, PLR_FISHING) &&
+       !PLR_FLAGGED(d->character, PLR_FISH_ON)) {
+
+      bite = number(1, 10);
+
+      if (bite >= 7 && bite <= 8) {
+        send_to_char("Time goes by... not even a nibble.\r\n", d->character);
+      } else if (bite >= 6) {
+       send_to_char("You feel a slight jiggle on your line.\r\n", d->character);
+      } else if (bite >= 4) {
+       send_to_char("You feel a very solid pull on your line!\r\n",
+                     d->character);
+       SET_BIT_AR(PLR_FLAGS(d->character), PLR_FISH_ON);
+      } else if (bite >= 2) {
+       send_to_char("Your line suddenly jumps to life, FISH ON!!!\r\n",
+                     d->character);
+       SET_BIT_AR(PLR_FLAGS(d->character), PLR_FISH_ON);
+      }
+    }
+  }
+}
+
+*************************
+*** In act.movement.c ***
+*************************
+
+*** in do_simple_move add the below snip just above
+*** char_from_room
+
+  if ((ROOM_FLAGGED(ch->in_room, ROOM_SALTWATER_FISH) ||
+       ROOM_FLAGGED(ch->in_room, ROOM_FRESHWATER_FISH)) &&
+      (PLR_FLAGGED(ch, PLR_FISHING) || PLR_FLAGGED(ch, PLR_FISH_ON))) {
+    REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_FISHING);
+    REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_FISH_ON);
+    send_to_char("\r\nYou pack up your fishing gear and move on.\r\n\r\n", ch);
+  }
+
+******************
+*** In fight.c ***
+******************
+
+*** in void damage, just under the sanctuary check:
+
+    if (PLR_FLAGGED(victim, PLR_FISHING) && dam >= 4)
+        dam = ((float) dam * 1.5);
+
+
+
+Another little bonus I added for players who fish is that if they
+catch an oyster or a carp, they can give it to our Questmaster mob
+in trade for one quest point. I did that through the use of dg scripts.
+If you use dg scripts on your MUD and want the scripts I use for the
+awarding of the quest point, just email me at kaan@dibrova.org or
+visit Dibrova - I'm on a lot.
+
+Oh, and here's our help file on fishing in case you want it:
+
+FISHING CASTOUT REELIN
+
+Usage: castout
+       reelin
+
+To fish, you must be near water, in a room specified as such. Also, you
+must be holding a fishing pole. If you move from your original place of 
+fishing, you automatically pack up your gear and move on.
+
+Anyone can fish, all you need is the pole and patience.
+
+Also, they say that the questmaster at the temple altar has a taste
+for fine oyster and, of all nastiness - carp. Catch either of these
+and try giving them to the questmaster. You may be happy with your
+reward!
+
+Note: If you are fishing and get attacked, your fighting skills are
+      severely impeded, and you WILL take more than your average
+      damage until you reel your line in.
+
+
+
+That's it. Enjoy it if you use it!

@@ -1,0 +1,101 @@
+SPECIAL(class_warrior)
+{
+  struct char_data *vict;
+  int att_type = 0, hit_roll = 0, to_hit = 0 ;
+  struct obj_data *weap;
+ 
+  if (cmd || !AWAKE(ch))
+    return FALSE;
+
+  /* if two people are fighting in a room */
+  if (FIGHTING(ch) && (FIGHTING(ch)->in_room == ch->in_room)) {
+
+      vict = FIGHTING(ch);
+
+      if (number(1, 5) == 5) {
+       act("$n foams at the mouth and growls in anger.", 1, ch, 0, 0, TO_ROOM);
+      }
+    if (GET_POS(ch) == POS_FIGHTING) {
+
+      att_type = number(1,40);          
+
+      hit_roll = number (1,100) + GET_STR(ch);
+      to_hit = (100 - (int) (100*GET_LEVEL(ch)/250));
+      if (GET_LEVEL(vict) >= LVL_IMMORT)  
+        hit_roll = 0;
+
+      switch(att_type) {  
+       case 1: case 2: case 3: case 4:
+	 /* bash */
+        if (hit_roll < to_hit) {
+          GET_POS(ch) = POS_SITTING;
+          damage(ch, vict, 0, SKILL_BASH, ABT_SKILL);   
+        } else {
+          GET_POS(vict) = POS_SITTING;
+          damage(ch, vict, GET_LEVEL(ch), SKILL_BASH, ABT_SKILL);
+          WAIT_STATE(vict, PULSE_VIOLENCE * 2);
+        }  
+        WAIT_STATE(ch, PULSE_VIOLENCE * 3);
+        
+        break;
+
+      case 5: case 6: case 7: case 8: case 9: case 10:
+	if (hit_roll < to_hit) {        /* kick */
+          damage(ch, vict, 0, SKILL_KICK, ABT_SKILL);
+        } else {
+          damage(ch, vict, 2 * GET_LEVEL(ch), SKILL_KICK, ABT_SKILL);
+        }  
+        WAIT_STATE(ch, PULSE_VIOLENCE * 2);
+        
+	break;
+
+      case 11:
+	if (hit_roll < to_hit) {        /* deathblow */
+          damage(ch, vict, 0, SKILL_DEATHBLOW, ABT_SKILL);
+        } else {
+          damage(ch, vict, 2 * GET_LEVEL(ch), SKILL_DEATHBLOW, ABT_SKILL);
+        }  
+        WAIT_STATE(ch, PULSE_VIOLENCE * 4);
+	break;
+      case 12: case 13: 
+	if (!(weap=GET_EQ(FIGHTING(ch), WEAR_WIELD))) {
+          send_to_char("Nope, sorry\r\n", ch);
+	  break;
+	}
+	if (hit_roll < to_hit) { 	/* Disarm */
+	  act("You knock $p from $N's hand!", FALSE, ch, weap, FIGHTING(ch), TO_CHAR);
+	  act("$n knocks $p from your hand!", FALSE, ch, weap, FIGHTING(ch), TO_VICT);
+	  act("$n knocks $p from $N's hand!", FALSE, ch, weap, FIGHTING(ch), TO_ROOM);
+	  obj_to_char(unequip_char(FIGHTING(ch), WEAR_WIELD), FIGHTING(ch));
+	} else {
+	  act("You fail to disarm $N", FALSE, ch, weap, FIGHTING(ch), TO_CHAR);
+	  act("$n fails to disarm you", FALSE, ch, weap, FIGHTING(ch), TO_VICT);
+	  act("$n fails to disarm $N", FALSE, ch, weap, FIGHTING(ch), TO_ROOM);
+	}
+	WAIT_STATE(ch, PULSE_VIOLENCE);
+	break; 
+      case 14: case 15: case 16:
+	if (hit_roll < to_hit) {   /* Round House */
+	  damage(ch, vict, 0, SKILL_ROUNDHOUSE, ABT_SKILL);
+	} else {
+	  damage(ch, vict, GET_LEVEL(ch), SKILL_ROUNDHOUSE, ABT_SKILL);
+        }
+        WAIT_STATE(ch, PULSE_VIOLENCE * 3);        
+	break;
+      case 17: 
+	if (hit_roll < to_hit) {
+	  WAIT_STATE(vict, PULSE_VIOLENCE*2);
+	  damage(ch, vict, GET_LEVEL(ch) + number(1, 10), SKILL_STUN, ABT_SKILL);
+	} else {
+	  damage(ch, vict, 0, SKILL_STUN, ABT_SKILL);
+	}
+	WAIT_STATE(ch, PULSE_VIOLENCE*3);
+	break;
+      default:
+        break;
+      }
+  
+    }
+  }
+  return FALSE;  
+}

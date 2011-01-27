@@ -1,0 +1,45 @@
+In spec_procs.c at the bottom add:
+
+SPECIAL(poop_monkey) {
+   if (cmd || GET_POS(ch) != POS_FIGHTING || !FIGHTING(ch))
+      return (FALSE);
+
+   if (IN_ROOM(FIGHTING(ch)) != IN_ROOM(ch) || rand_number(0, 2))
+      return (FALSE);
+
+   act("$n hits $N with some flung poop! EEEEWWWWW!", 1, ch, 0, FIGHTING(ch), TO_NOTVICT);
+   act("$n hits you with some flung poop! EEEEWWWWW!!!", 1, ch, 0, FIGHTING(ch), TO_VICT);
+
+   GET_HIT(FIGHTING(ch)) -= GET_LEVEL(ch);
+
+   return TRUE;
+}
+
+In spec_assign.c after SPECIAL(gen_board); add:
+
+SPECIAL(poop_monkey);
+
+
+In spec_assign.c after ASSIGNMOB(1, puff); add:
+
+  ASSIGNMOB(1297, poop_monkey);
+
+
+Here is an example mob I created:
+#1297
+poop monkey~
+a monkey~
+A monkey stands here, scratching its butt.
+~
+It looks unfinished.
+~
+ad 0 0 0 0 0 0 0 0 E
+0 20 10 1d1+50 1d1+0
+0 0
+8 8 0
+E
+
+-- Dean Vaughan
+   August 04, 2003
+   http://thevedic.net/mud
+   vedic@thevedic.net

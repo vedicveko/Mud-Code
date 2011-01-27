@@ -1,0 +1,180 @@
+Here's some code to help you add "Hidden Exits" to your CircleMUD.
+I use OasisOLC and will include the code to add the hidden exits
+from redit.
+
+Basically, an exit that is hidden will not show the exit direction
+in AUTOEXIT or with the EXITS command.  A player who passes through
+the exit will see a message saying he or she discovered a secret exit.
+
+The way I implemented it, due to the bizarre way that CircleMUD
+handles doors, requires a slight format change to the wld files.
+On the door lines, a number will be appended to the end.  A zero
+means the exit is normal.  A positive integer (a 16 in my case,
+this depends on the value of the set bit for this flag) will hide
+this exit.  Since I'm a lazy bastard, I added all the code EXCEPT
+for the changes to the loader (db.c) and then went in the game and
+"REDIT SAVE"'ed every zone to write out the new formats.  Saved a
+few minutes on writing a converter.
+
+Okay.  Here we go...
+
+First, add the new EX_ flag in structs.h right after the definition
+of EX_PICKPROOF.  The line should look like:
+
+#define EX_HIDDEN       (1 << 4)  /* Hidden exit */
+
+Next, open the file "act.informative.c" and jump to the function
+called "do_auto_exits" and change the line that tests for a closed
+door and add the new condition for a HIDDEN exit.  The result should
+look something like:
+
+	!EXIT_FLAGGED(EXIT(ch, door), EX_CLOSED) &&
+	!EXIT_FLAGGED(EXIT(ch, door), EX_HIDDEN))
+
+
+Then update the EXITS command.  The function after the check looks
+like the following on Dibrova...
+
+ACMD(do_exits)
+{
+  int door;
+
+  *buf = '\0';
+
+  if (AFF_FLAGGED(ch, AFF_BLIND)) {
+    send_to_char("You can't see a damned thing, you're blind!\r\n", ch);
+    return;
+  }
+  for (door = 0; door < NUM_OF_DIRS; door++)
+    if (EXIT(ch, door) && EXIT(ch, door)->to_room != NOWHERE &&
+	!IS_SET(EXIT(ch, door)->exit_info, EX_CLOSED)) {
+      if (GET_LEVEL(ch) >= LVL_IMMORT) {
+	sprintf(buf2, "%-5s - [%5d] %s\r\n", dirs[door],
+		world[EXIT(ch, door)->to_room].number,
+		world[EXIT(ch, door)->to_room].name);
+        strcat(buf, CAP(buf2));
+      } else {
+        if (!IS_SET(EXIT(ch, door)->exit_info, EX_HIDDEN)) {
+          sprintf(buf2, "%-5s - ", dirs[door]);
+	  if (IS_DARK(EXIT(ch, door)->to_room) && !CAN_SEE_IN_DARK(ch))
+	    strcat(buf2, "Too dark to tell\r\n");
+	  else {
+	    strcat(buf2, world[EXIT(ch, door)->to_room].name);
+	    strcat(buf2, "\r\n");
+          }
+          strcat(buf, CAP(buf2));
+	}
+      }
+    }
+  send_to_char("Obvious exits:\r\n", ch);
+
+  if (*buf)
+    send_to_char(buf, ch);
+  else
+    send_to_char(" None.\r\n", ch);
+}
+
+That's all the code required to handle the hidden exits.  Now a few 
+small changes are required in db.c to load the bit for this flag.
+since this is adding a new item in the wld files, the existing world 
+files will need to be updated.  To update the wld files, the line
+describing an exit has to be changed by adding a zero at the end of
+the line.  For example, the following exit ...
+
+D2
+The Immortal Board Room can be seen to the south.
+~
+~
+0 -1 1204
+S
+
+... would become ...
+
+D2
+The Immortal Board Room can be seen to the south.
+~
+~
+0 -1 1204 0
+S
+
+Got it?  Good. Now for the changes to db.c.  For starters, go to
+the function called setup_dir and find the line that scans the 
+exit line.  Change it to read in your new number on the line.  It
+should now look like:
+
+  if (sscanf(line, " %d %d %d %d", t, t + 1, t + 2, t + 3) != 4) {
+
+At the end of that function, put in a check to see if the item you
+added is telling you to hide the exit.  I use the number EX_HIDDEN
+to test for a hidden exit.  You may prefer to use a 1 and a 0.  The
+check should look something like:
+
+  if (t[3]==EX_HIDDEN)
+    SET_BIT(world[room].dir_option[dir]->exit_info, EX_HIDDEN);
+
+That's it for the whole functionality.  Pretty simple, really.
+Next thing is to hook it into REDIT so everything will be 
+complete.  For starters, update "redit_save_to_disk" so you'll
+write out the new item in the wld files.  Change the line that
+writes the door to disk to look like:
+
+	  fprintf(fp, "D%d\n%s~\n%s~\n%d %d %d %d\n", counter2, buf1, buf2,
+		  temp_door_flag, room->dir_option[counter2]->key,
+		  room->dir_option[counter2]->to_room != -1 ?
+		  world[room->dir_option[counter2]->to_room].number : -1,
+                  IS_SET(room->dir_option[counter2]->exit_info, EX_HIDDEN));
+
+
+Now add a visual indicator to the door menu to show if an exit is
+hidden or not.  If you do a search for "Weird door handling", you
+should get to the following section.  All I did was strcat the 
+word " (hidden)" if the HIDDEN flag is set.
+
+
+/*
+   * Weird door handling! 
+   */
+  if (IS_SET(OLC_EXIT(d)->exit_info, EX_ISDOOR)) {
+    if (IS_SET(OLC_EXIT(d)->exit_info, EX_PICKPROOF))
+      strcpy(buf2, "Pickproof");
+    else
+      strcpy(buf2, "Is a door");
+  } else
+    strcpy(buf2, "No door");
+
+  if (IS_SET(OLC_EXIT(d)->exit_info, EX_HIDDEN))
+    strcat(buf2, " (hidden)");
+
+Next, add an item to the door menu right after "Purge exit" called
+"Hide exit".  
+
+	  "%s6%s) Purge exit.\r\n"
+	  "%s7%s) Hide exit:  : %s%s\r\n"
+
+...
+
+	  grn, nrm, cyn, buf2, grn, nrm,
+	  grn, nrm, cyn, YESNO(IS_SET(OLC_EXIT(d)->exit_info, EX_HIDDEN))
+
+Both the section above are from the same function.  The Purge exit
+stuff was already there.  The last line of each chunk is new.
+
+Next thing is to drop in a quick toggle for the new menu item.
+Under the handler for purge, right before the default case, add:
+
+    case '7':
+      TOGGLE_BIT(OLC_EXIT(d)->exit_info, EX_HIDDEN);
+      redit_disp_exit_menu(d);
+      return;
+
+That will just toggle the HIDDEN flag.
+
+Shazaam!!  That's it.  Please let me know if I missed anything.
+
+NOTE:  This code is no longer used on dibrova.  Since doing this,
+I've gone ahead and re-done the way exits are stored in the wld
+files.  It was remarkably easy.  I will probably release the entire
+wad of source code to DibrovaII shortly.  It'll have all sorts of 
+infrastructure changes with very little specific stuff to the 
+second version of Dibrova.  This wad will contain the new exit
+code along with the new adaptation of this "hidden exit" jobby.

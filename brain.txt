@@ -1,0 +1,80 @@
+ACMD(do_knockout)
+{
+  struct affected_type af[2];
+  struct char_data *vict;
+  int percent, prob;
+
+  one_argument(argument, buf);
+
+  if (!GET_SKILL(ch, SKILL_KNOCKOUT)) {
+    send_to_char("You don't know how!\r\n", ch);
+    return;
+  }
+
+  if (!(vict = get_char_room_vis(ch, buf))) {
+    if (FIGHTING(ch)) {
+      vict = FIGHTING(ch);
+    } else {
+      send_to_char("Knockout who?\r\n", ch);
+      return;
+    }
+  }
+
+  if (!pk_allowed && !pkill_ok(ch, vict)) {
+    send_to_char("You are forbidden to attack players here.\r\n", ch);
+    return;
+  }
+ 
+  if (vict == ch) {
+    send_to_char("That would be funny to see.\r\n", ch);
+    return;
+  }
+  if (!GET_EQ(ch, WEAR_WIELD)) {
+    send_to_char("You need to wield a weapon to make it a success.\r\n", ch);
+    return;
+  }
+  if (GET_OBJ_VAL(GET_EQ(ch, WEAR_WIELD), 3) != TYPE_BLUDGEON - TYPE_HIT) {
+    send_to_char("Only bludgeoning weapons can be used for knockingout.\r\n", ch);
+    return;
+  }
+  if (FIGHTING(vict)) {
+    send_to_char("You can't knock out a fighting person -- they're too alert!\r\n", ch);
+    return;
+  }
+
+  if (MOB_FLAGGED(vict, MOB_AWARE)) {
+    act("You notice $N raising $s weapon at you!", FALSE, vict, 0, ch, TO_CHAR);
+    act("$e notices you raising your weapon!", FALSE, vict, 0, ch, TO_VICT);
+    act("$n notices $N raising $s weapon at $m!", FALSE, vict, 0, ch, TO_NOTVICT);
+    hit(vict, ch, TYPE_UNDEFINED);
+    WAIT_STATE(ch, PULSE_VIOLENCE * 3);
+    return;
+  }
+
+  percent = number(1, 101);	/* 101% is a complete failure */
+  prob = GET_SKILL(ch, SKILL_KNOCKOUT);
+
+  if (AWAKE(vict) && (percent < prob)) {
+    act("You are knocked out when $N hits you upside your head.", FALSE, vict, 0, ch, TO_CHAR);
+    act("$n sees stars, and slumps over, knocked out.", FALSE, vict, 0, ch, TO_VICT);
+    act("$n sees stars, and slumps over, knocked out, after $N hits $m upside the head.", FALSE, vict, 0, ch, TO_NOTVICT);
+   
+    af[0].location = APPLY_AC;
+    af[0].modifier = 1;
+    af[0].duration = 2;
+    af[0].bitvector = AFF_SLEEP;
+    affect_join(vict, af, FALSE, FALSE, FALSE, FALSE);
+    GET_POS(vict) = POS_SLEEPING;
+
+    WAIT_STATE(ch, PULSE_VIOLENCE * 3);
+
+  }  else {
+    act("You notice $N raising $s weapon at you!", FALSE, vict, 0, ch, TO_CHAR);
+    act("$e notices you raising your weapon!", FALSE, vict, 0, ch, TO_VICT);
+    act("$n notices $N raising $s weapon at $m!", FALSE, vict, 0, ch, TO_NOTVICT);
+    hit(ch, vict, SKILL_KNOCKOUT);
+    improve_skill(ch, SKILL_KNOCKOUT);
+    WAIT_STATE(ch, PULSE_VIOLENCE * 3);
+  }
+}
+

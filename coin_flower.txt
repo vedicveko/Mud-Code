@@ -1,0 +1,57 @@
+
+
+In spec_procs.c at the bottom:
+
+// This could be moved to utils.h, but for ease of installation I'll leave it here.
+#define IS_DAY              (weather_info.sunlight == SUN_RISE || \
+                                             weather_info.sunlight == SUN_LIGHT)
+
+SPECIAL(coin_flower) {
+
+  struct char_data *flower = (struct char_data *)me;
+
+  if(CMD_IS("get") || CMD_IS("take")) {
+    if (weather_info.sky == SKY_CLOUDLESS && IS_DAY && !FIGHTING(flower)) {
+      send_to_char(ch,
+                 "As you reach for the coin the coin catches the sunlight and a bright flash of light envelopes you!\r\n");
+      act("As $n reaches for the coin on the ground the coin catches the sunlight and a bright flash of light envelopes $n!\r\n", TRUE, ch, 0, FALSE, TO_ROOM);
+
+      call_magic(ch, flower, 0, SPELL_BLINDNESS, 30, CAST_SPELL);
+    }
+
+    hit(flower, ch, TYPE_UNDEFINED);
+
+    return(TRUE);
+  }
+  return(FALSE);
+}
+
+In spec_assign.c after SPECIAL(gen_board);
+
+SPECIAL(coin_flower);
+
+In spec_assign.c after ASSIGNMOB(1, puff);
+
+  ASSIGNMOB(1299, coin_flower);
+
+Here is a test mobile I created:
+#1299
+coin flower~
+a coin flower~
+A single coin lies here.
+~
+The coin is silver in color and has a smooth face. As you look at the coin you notice it is attached to a small green vine.
+The vine blends in with the surrounding land quite well.
+~
+abdnpqr 0 0 0 0 0 0 0 0 E
+5 16 8 5d50+55 3d4+4
+1 2500
+8 8 0
+BareHandAttack: 2
+E
+
+-- Dean Vaughan
+   August 04, 2003
+   http://thevedic.net/mud
+   vedic@thevedic.net
+

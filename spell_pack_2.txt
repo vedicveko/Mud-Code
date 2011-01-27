@@ -1,0 +1,62 @@
+
+  case SPELL_HOLY_FURY:
+    af[0].bitvector = AFF_HASTE;
+    af[0].duration = 3 + (int)(GET_LEVEL(ch) / 2);
+    accum_duration = FALSE;
+    accum_affect = FALSE;
+    to_vict = "You feel like you can take on an army!";
+    to_room = "$n gets a strange furious scowl on $m face and speeds up.";
+    break;
+
+  "You feel your fighting ability decrease.",
+
+  spello(SPELL_HOLY_FURY, 100, 70, 5, POS_STANDING,
+	TAR_CHAR_ROOM | TAR_SELF_ONLY, FALSE, MAG_AFFECTS);
+
+
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+
+  case SPELL_CHAMPION_STRENGTH:
+    af[0].bitvector = APPLY_STR;
+    af[0].duration = 5;
+    af[0].modifier = 3;
+    af[0].bitvector = APPLY_DAMROLL;
+    af[0].duration = 5;
+    af[0].modifier = 3;
+    accum_duration = FALSE;
+    accum_affect = FALSE;
+    to_vict = "You feel like you have the strength of a champion!";
+    break;
+
+  "You no longer feel like you can take on an army.",
+
+  spello(SPELL_CHAMPION_STRENGTH, 150, 70, 5, POS_STANDING,
+	TAR_CHAR_ROOM | TAR_SELF_ONLY, FALSE, MAG_AFFECTS);
+
+
+
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+
+  case SPELL_HOLY_MACE:
+    dam = dice(4, 10) + 4 + (level >> 2);
+    break;
+
+
+* Holy Mace
+M
+ 91
+You hit $N so hard with your holy mace that $E dies a painful death.
+$n hits you so hard with $s holy mace that you die.
+$n hits $N so hard he dies a painful death.
+$N steps nimbly aside and avoids your holy mace.
+You step aside from $n as $e attempts to hit you with a holy mace.
+$N steps nimbly away from $n as $e attempts to hit $s with a holy mace.
+You hit $N in the head with your holy mace making a loud thunk!
+$n's holy mace hits you in the head with a loud thunk!
+$N looks pained as $n hits $S in the head with a holy mace.
+A God is liable to take it pretty bad when a mortal attempts to touch $M.
+You swat $n's hand away as $e attempts to hit you with a holy mace.
+$n swats $N's hand away and slaps $N a ringing blow as $N tries to hit $s with a holy mace.
+
+  spello(SPELL_HOLY_MACE, 30, 10, 2, POS_FIGHTING,
+        TAR_CHAR_ROOM | TAR_FIGHT_VICT, TRUE, MAG_DAMAGE);

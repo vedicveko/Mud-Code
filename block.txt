@@ -1,0 +1,22 @@
+To use this BLOCK skill, go to fight.c and in the "damage" function,
+before it actually does the damage, flee, etc, put the following...
+
+  /* For BLOCK */
+  if (GET_POS(victim)==POS_FIGHTING) {
+    if (GET_SKILL(victim, SKILL_BLOCK)) {
+      if (number(1, 640) <
+         GET_SKILL(victim, SKILL_BLOCK)+(2*(GET_DEX(victim)-GET_DEX(ch)))) {
+        act("You block $N's vicious attack!", FALSE, victim, 0, ch, TO_CHAR);
+        act("$n blocks your vicious attack!", FALSE, victim, 0, ch, TO_VICT);
+        act("$n blocks $N's vicious attack!", FALSE, victim, 0, ch, TO_ROOM);
+        return;
+      }
+    }
+  }
+
+
+The numbers are arbitrary, really.  They seem to work well in the
+context of Dibrova but you may need to make adjustments.  Like all
+skills, add the skill name and a skillo in spell_parser.c.  Then, 
+go to class.c and link it to a class.  Since this skill activates
+itself, you don't need to add a new command.

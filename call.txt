@@ -1,0 +1,78 @@
+The following skill is as implemented as the ranger skill on
+Dibrova.  Edit the following "#defines" to point to the vnums
+of the critters you want players to be able to summon on your
+mud.  Remember - there's a progression here.  Some animals will
+be harder to summon than others.
+
+Because this is a skill, you will need to link it to a new
+command (defined in interpreter.c) to get it hooked up.  Then,
+add the skill to a class in "class.c" so players can use it.
+Like all other skills, you'll need to update the table in 
+spell_parser as well as plugging its skillo.
+
+
+#define CALL_MOVE_COST 15
+#define CALL_HAWK 25
+#define CALL_MONKEY 26
+#define CALL_TIGER 27
+#define CALL_BEAR 28
+ACMD(do_call) {
+
+  struct char_data *pet;
+  struct follow_type *f;
+  int chance;
+  int penalty=0;
+
+  if (!GET_SKILL(ch, SKILL_CALL_WILD)) {
+    send_to_char("You have no idea how.\r\n", ch);
+    return;
+  }
+
+  if (GET_MOVE(ch) <= CALL_MOVE_COST) {
+    send_to_char("You are too tired.\r\n", ch);
+    return;
+  }
+
+  GET_MOVE(ch) -= CALL_MOVE_COST;
+
+  for (f = ch->followers; f; f = f->next)
+    if (IN_ROOM(ch) == IN_ROOM(f->follower)) {
+      if (IS_MOB(f->follower))
+        penalty+=5;
+      else
+        penalty+=2;
+    }
+
+  if (GET_CHA(ch) < (penalty + 5)) {
+    send_to_char("You can not attract any more followers now.\r\n", ch);
+    return;
+  }
+
+  chance = number(0, GET_SKILL(ch, SKILL_CALL_WILD) + GET_LEVEL(ch));
+
+  if (chance < 90) {
+    act("Your call fails.  No wildlife was attracted.", FALSE, ch,
+        0, 0, TO_CHAR);
+    act("$n belts out an impressive call to the wild and looks a bit
+        dissapointed as it remains unanswered.", FALSE, ch, 0, 0, TO_NOTVICT);
+    return;
+  } else if (chance  < 100)
+    pet = read_mobile(CALL_HAWK, VIRTUAL);
+  else if (chance  < 120)
+    pet = read_mobile(CALL_MONKEY, VIRTUAL);
+  else if (chance  < 140)
+    pet = read_mobile(CALL_TIGER, VIRTUAL);
+  else
+    pet = read_mobile(CALL_BEAR, VIRTUAL);
+
+  act("Your call of the wild is answered by $N.", FALSE, ch, 0, pet, TO_CHAR);
+  act("$ns call of the wild is answered by $N.", FALSE, ch, 0, pet, TO_ROOM);
+
+  IS_CARRYING_W(pet) = 1000;
+  IS_CARRYING_N(pet) = 100;
+  SET_BIT_AR(AFF_FLAGS(pet), AFF_CHARM);  
+
+  char_to_room(pet, IN_ROOM(ch));
+  add_follower(pet, ch);
+}
+
